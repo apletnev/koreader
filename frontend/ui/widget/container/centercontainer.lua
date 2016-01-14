@@ -1,9 +1,14 @@
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
+local Blitbuffer = require("ffi/blitbuffer")
 
 --[[
 CenterContainer centers its content (1 widget) within its own dimensions
 --]]
-local CenterContainer = WidgetContainer:new()
+local CenterContainer = WidgetContainer:new({
+    bordersize = 0,
+    color = Blitbuffer.COLOR_BLACK,
+    radius = 0,
+})
 
 function CenterContainer:paintTo(bb, x, y)
     local content_size = self[1]:getSize()
@@ -14,12 +19,21 @@ function CenterContainer:paintTo(bb, x, y)
     local x_pos = x
     local y_pos = y
     if self.ignore ~= "height" then
-        y_pos = y + math.floor((self.dimen.h - content_size.h)/2)
+        y_pos = y + math.floor((self.dimen.h - content_size.h) / 2)
     end
     if self.ignore ~= "width" then
-        x_pos = x + math.floor((self.dimen.w - content_size.w)/2)
+        x_pos = x + math.floor((self.dimen.w - content_size.w) / 2)
     end
-    self[1]:paintTo(bb, x_pos, y_pos)
+
+    if self.bordersize > 0 then
+        bb:paintBorder(x_pos, y_pos,
+            content_size.w,
+            content_size.h,
+            self.bordersize, self.color, self.radius)
+    end
+    if self[1] then
+        self[1]:paintTo(bb, x_pos, y_pos)
+    end
 end
 
 return CenterContainer
