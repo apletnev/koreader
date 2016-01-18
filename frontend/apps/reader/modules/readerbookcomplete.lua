@@ -2,6 +2,7 @@ local InputContainer = require("ui/widget/container/inputcontainer")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local UIManager = require("ui/uimanager")
 local InputText = require("ui/widget/inputtext")
+local TimeVal = require("ui/timeval")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local RenderText = require("ui/rendertext")
 local RightContainer = require("ui/widget/container/rightcontainer")
@@ -24,6 +25,15 @@ local DEBUG = require("dbg")
 local util = require("util")
 local _ = require("gettext")
 
+--[[
+--Save into sdr folder addtional section
+["summary"] = {
+    ["rating"] = 5,
+    ["note"] = "Some text",
+    ["status"] = "Reading"
+    ["modified"] = "24.01.2016"
+},]]
+
 local ReaderBookComplete = InputContainer:new {
     -- identify itself
     pages = 0,
@@ -36,9 +46,19 @@ local ReaderBookComplete = InputContainer:new {
     props = nil,
     stars = {},
     star = {},
+    book_state = 2,
+    summary = {
+        rating = 0,
+        note = nil,
+        status = "",
+        modified = "",
+    }
 }
 
 function ReaderBookComplete:init()
+    DEBUG("CONFIG:", self.doc_settings)
+    --self.summary = self.ui.doc_settings:readSetting("summary")
+
     self.small_font_face = Font:getFace("ffont", 15)
     self.medium_font_face = Font:getFace("ffont", 20)
     self.large_font_face = Font:getFace("ffont", 25)
@@ -89,8 +109,6 @@ function ReaderBookComplete:showStatus()
 
         local cover_with_title_and_author_container = CenterContainer:new {
             dimen = Geom:new { w = screen_width, h = thumb:getSize().h },
-            bordersize = 0,
-            padding = 0,
         }
 
         local cover_with_title_and_author_group = HorizontalGroup:new { align = "top" }
@@ -109,8 +127,8 @@ function ReaderBookComplete:showStatus()
         table.insert(main_group, self:generateRateGroup(screen_width, 60))
         table.insert(main_group, self:addHeader(screen_width, 35, _("Statistics")))
         table.insert(main_group, self:generateStatisticsGroup(screen_width, 60, '8', '09:12:40', '633'))
-        table.insert(main_group, self:addHeader(screen_width, 35, _("Note")))
-        table.insert(main_group, self:generateNoteGroup(screen_width, 140, "Some long text"))
+        table.insert(main_group, self:addHeader(screen_width, 35, _("Summary")))
+        table.insert(main_group, self:generateSummaryGroup(screen_width, 140, "Some long text"))
         table.insert(main_group, self:addHeader(screen_width, 25, _("Status")))
         table.insert(main_group, self:generateSwitchGroup(screen_width, 50))
     end
@@ -136,9 +154,6 @@ function ReaderBookComplete:addHeader(width, height, title)
 
     local line_container = LeftContainer:new {
         dimen = Geom:new { w = lineWidth, h = height },
-        align = "center",
-        bordersize = 0,
-        padding = 0,
         LineWidget:new {
             background = Blitbuffer.gray(0.2),
             dimen = Geom:new {
@@ -150,7 +165,6 @@ function ReaderBookComplete:addHeader(width, height, title)
 
     local text_container = CenterContainer:new {
         dimen = Geom:new { w = titleSize.x, h = height },
-        bordersize = 0,
         titleWidget,
     }
 
@@ -163,8 +177,6 @@ end
 function ReaderBookComplete:generateSwitchGroup(width, height)
     local switch_container = CenterContainer:new {
         dimen = Geom:new { w = width, h = height },
-        bordersize = 0,
-        padding = 0,
     }
 
     local config = {
@@ -208,22 +220,43 @@ function ReaderBookComplete:generateSwitchGroup(width, height)
         config = self,
     }
 
-    switch:setPosition(2)
+    switch:setPosition(self.book_state)
 
     table.insert(switch_container, switch);
     return switch_container
 end
 
-function ReaderBookComplete:onChangeBookStatus(arg)
-    DEBUG(arg)
+function ReaderBookComplete:onChangeBookStatus(option_name, option_value)
+    DEBUG("ON CHANGE BOOK STATUS", option_name, option_value)
+    DEBUG(option_name[option_value])
+
+    local curr_time = TimeVal:now()
+    self.summary.status = option_name[option_value]
+    self.summary.modified = os.date("%Y-%m-%d", curr_time.sec)
+    self:saveSummary()
+    return true
+end
+
+function ReaderBookComplete:onUpdateNote()
+    DEBUG("UPDATE NOTE", self.input_note:getText())
+    self.summary.note = self.input_note:getText()
+    self:saveSummary()
+    return true
+end
+
+
+function ReaderBookComplete:saveSummary()
+    self.summary.rating = 5
+    --self.doc_settings:saveSetting("summary", self.summary)
+    DEBUG("SAVE SUMMARY", self.summary)
 end
 
 function ReaderBookComplete:onConfigChoose(values, name, event, args, events, position)
     UIManager:scheduleIn(0.05, function()
-        --[[        if values then
-                    self:onConfigChoice(name, values[position])
-                end
-                if event then
+        if values then
+            self:onChangeBookStatus(name, values[position])
+        end
+        --[[        if event then
                     args = args or {}
                     self:onConfigEvent(event, args[position])
                 end
@@ -235,10 +268,10 @@ function ReaderBookComplete:onConfigChoose(values, name, event, args, events, po
     end)
 end
 
-function ReaderBookComplete:generateNoteGroup(width, height, text)
+function ReaderBookComplete:generateSummaryGroup(width, height, text)
     local note_group = VerticalGroup:new { align = "center" }
 
-    local input_text = InputText:new {
+    self.input_note = InputText:new {
         text = text,
         face = self.medium_font_face,
         width = width * 0.95,
@@ -257,24 +290,24 @@ function ReaderBookComplete:generateNoteGroup(width, height, text)
         enabled = true,
         show_parent = self,
         callback = function()
-            DEBUG("UPDATE CLICK")
+            self:onUpdateNote()
+            --DEBUG("UPDATE CLICK")
         end,
     }
 
     local button_container = RightContainer:new {
         dimen = Geom:new { w = width, h = update_button:getSize().h },
         bordersize = 0,
-        padding = 0,
+        padding = 5,
+        margin = 0,
         update_button
     }
 
-    table.insert(note_group, input_text)
+    table.insert(note_group, self.input_note)
     table.insert(note_group, button_container)
 
     local note_container = CenterContainer:new {
         dimen = Geom:new { w = width, h = height },
-        bordersize = 0,
-        padding = 0,
         note_group
     }
     return note_container
@@ -302,8 +335,6 @@ function ReaderBookComplete:generateRateGroup(width, height)
 
     self.stars_container = CenterContainer:new {
         dimen = Geom:new { w = width, h = height },
-        bordersize = 0,
-        padding = 0,
         self.stars_group
     }
 
@@ -324,8 +355,6 @@ end
 function ReaderBookComplete:generateStatisticsGroup(width, height, days, average, pages)
     local statistics_container = CenterContainer:new {
         dimen = Geom:new { w = width, h = height },
-        bordersize = 0,
-        padding = 0,
     }
 
     local statistics_group = VerticalGroup:new { align = "left" }
@@ -337,8 +366,6 @@ function ReaderBookComplete:generateStatisticsGroup(width, height, days, average
 
     local title_days_container = CenterContainer:new {
         dimen = Geom:new { w = tile_width, h = tile_height },
-        bordersize = 0,
-        padding = 0,
         TextWidget:new {
             text = _("Days"),
             face = self.small_font_face,
@@ -346,8 +373,6 @@ function ReaderBookComplete:generateStatisticsGroup(width, height, days, average
     }
     local title_time_container = CenterContainer:new {
         dimen = Geom:new { w = tile_width, h = tile_height },
-        bordersize = 0,
-        padding = 0,
         TextWidget:new {
             text = _("Time"),
             face = self.small_font_face,
@@ -355,8 +380,6 @@ function ReaderBookComplete:generateStatisticsGroup(width, height, days, average
     }
     local title_read_pages_container = CenterContainer:new {
         dimen = Geom:new { w = tile_width, h = tile_height },
-        bordersize = 0,
-        padding = 0,
         TextWidget:new {
             text = _("Read pages"),
             face = self.small_font_face,
@@ -370,8 +393,6 @@ function ReaderBookComplete:generateStatisticsGroup(width, height, days, average
 
     local days_container = CenterContainer:new {
         dimen = Geom:new { w = tile_width, h = tile_height },
-        bordersize = 0,
-        padding = 0,
         TextWidget:new {
             text = days,
             face = self.medium_font_face,
@@ -379,8 +400,6 @@ function ReaderBookComplete:generateStatisticsGroup(width, height, days, average
     }
     local average_time_container = CenterContainer:new {
         dimen = Geom:new { w = tile_width, h = tile_height },
-        bordersize = 0,
-        padding = 0,
         TextWidget:new {
             text = average,
             face = self.medium_font_face,
@@ -388,8 +407,6 @@ function ReaderBookComplete:generateStatisticsGroup(width, height, days, average
     }
     local read_pages_container = CenterContainer:new {
         dimen = Geom:new { w = tile_width, h = tile_height },
-        bordersize = 0,
-        padding = 0,
         TextWidget:new {
             text = pages,
             face = self.medium_font_face,
@@ -411,7 +428,6 @@ function ReaderBookComplete:generateTitleAuthorProgressGroup(width, height, titl
 
     local title_author_container = CenterContainer:new {
         dimen = Geom:new { w = width, h = height },
-        bordersize = 0,
     }
 
     local title_author_progressbar_group = VerticalGroup:new { align = "left" }
@@ -432,8 +448,6 @@ function ReaderBookComplete:generateTitleAuthorProgressGroup(width, height, titl
         }
         local title_text_container = CenterContainer:new {
             dimen = Geom:new { w = width, h = text_title:getSize().h },
-            bordersize = 0,
-            padding = 0,
             text_title
         }
         table.insert(title_author_progressbar_group, title_text_container)
@@ -447,9 +461,6 @@ function ReaderBookComplete:generateTitleAuthorProgressGroup(width, height, titl
 
     local author_container = CenterContainer:new {
         dimen = Geom:new { w = width, h = text_author:getSize().h },
-        align = "center",
-        bordersize = 0,
-        padding = 0,
         text_author
     }
 
@@ -466,8 +477,6 @@ function ReaderBookComplete:generateTitleAuthorProgressGroup(width, height, titl
 
     local progress_bar_container = CenterContainer:new {
         dimen = Geom:new { w = width, h = progressWidget:getSize().h },
-        bordersize = 0,
-        padding = 0,
         progressWidget
     }
 
@@ -479,8 +488,6 @@ function ReaderBookComplete:generateTitleAuthorProgressGroup(width, height, titl
 
     local progress_bar_text_container = CenterContainer:new {
         dimen = Geom:new { w = width, h = text_complete:getSize().h },
-        bordersize = 0,
-        padding = 0,
         text_complete
     }
 
