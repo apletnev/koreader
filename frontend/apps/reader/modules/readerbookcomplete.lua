@@ -99,7 +99,6 @@ function ReaderBookComplete:showStatus()
         local img_width = self.thumbnail:getWidth() * 0.3
         local img_height = self.thumbnail:getHeight() * 0.3
 
-
         local thumb = ImageWidget:new {
             image = self.thumbnail,
             width = img_width,
@@ -117,20 +116,35 @@ function ReaderBookComplete:showStatus()
 
         table.insert(cover_with_title_and_author_group, span)
         table.insert(cover_with_title_and_author_group, thumb)
-        table.insert(cover_with_title_and_author_group, self:generateTitleAuthorProgressGroup(screen_width - span.width - thumb:getSize().w, thumb:getSize().h, self.props.title, self.props.authors, 80, 600))
+        table.insert(cover_with_title_and_author_group,
+            self:generateTitleAuthorProgressGroup(screen_width - span.width - thumb:getSize().w,
+                thumb:getSize().h,
+                self.props.title,
+                self.props.authors, 80, 600))
         table.insert(cover_with_title_and_author_container, cover_with_title_and_author_group)
+
+        --portrait mode
+        local rateHeight = 60
+        local statisticsHeight = 60
+        local summaryHeight = 140
+        local statusHeight = 50
+
+        --landscape mode
+        if Screen:getScreenMode() == "landscape" then
+            summaryHeight = 80
+        end
 
 
         table.insert(main_group, self:addHeader(screen_width, 25, _("Progress")))
         table.insert(main_group, cover_with_title_and_author_container)
         table.insert(main_group, self:addHeader(screen_width, 25, _("Rate")))
-        table.insert(main_group, self:generateRateGroup(screen_width, 60))
+        table.insert(main_group, self:generateRateGroup(screen_width, rateHeight))
         table.insert(main_group, self:addHeader(screen_width, 35, _("Statistics")))
-        table.insert(main_group, self:generateStatisticsGroup(screen_width, 60, '8', '09:12:40', '633'))
+        table.insert(main_group, self:generateStatisticsGroup(screen_width, statisticsHeight, '8', '09:12:40', '633'))
         table.insert(main_group, self:addHeader(screen_width, 35, _("Summary")))
-        table.insert(main_group, self:generateSummaryGroup(screen_width, 140, "Some long text"))
+        table.insert(main_group, self:generateSummaryGroup(screen_width, summaryHeight, "Some long text"))
         table.insert(main_group, self:addHeader(screen_width, 25, _("Status")))
-        table.insert(main_group, self:generateSwitchGroup(screen_width, 50))
+        table.insert(main_group, self:generateSwitchGroup(screen_width, statusHeight))
     end
     return main_group
 end
@@ -183,9 +197,9 @@ function ReaderBookComplete:generateSwitchGroup(width, height)
         event = "ChangeBookStatus",
         default_value = 2,
         toggle = {
-            [1] = "Complete",
-            [2] = "Reading",
-            [3] = "Abandone",
+            [1] = _("Complete"),
+            [2] = _("Reading"),
+            [3] = _("Abandone"),
         },
         args = {
             [1] = "complete",
@@ -193,7 +207,6 @@ function ReaderBookComplete:generateSwitchGroup(width, height)
             [3] = "abandone",
         },
         default_arg = "reading",
-        name_text = "Book Status",
         values = {
             [1] = 1,
             [2] = 2,
@@ -254,16 +267,8 @@ end
 function ReaderBookComplete:onConfigChoose(values, name, event, args, events, position)
     UIManager:scheduleIn(0.05, function()
         if values then
-            self:onChangeBookStatus(name, values[position])
+            self:onChangeBookStatus(args, position)
         end
-        --[[        if event then
-                    args = args or {}
-                    self:onConfigEvent(event, args[position])
-                end
-                if events then
-                    self:onConfigEvents(events, position)
-                end]]
-        --self:update()
         UIManager:setDirty("all")
     end)
 end
@@ -275,9 +280,9 @@ function ReaderBookComplete:generateSummaryGroup(width, height, text)
         text = text,
         face = self.medium_font_face,
         width = width * 0.95,
-        height = height * 0.65,
+        height = height * 0.55,
         scroll = true,
-        margin = 10,
+        margin = 5,
         padding = 0,
         parent = self,
     }
@@ -291,7 +296,6 @@ function ReaderBookComplete:generateSummaryGroup(width, height, text)
         show_parent = self,
         callback = function()
             self:onUpdateNote()
-            --DEBUG("UPDATE CLICK")
         end,
     }
 
