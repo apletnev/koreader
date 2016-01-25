@@ -44,7 +44,6 @@ local ReaderBookComplete = InputContainer:new {
     document = nil,
     thumbnail = nil,
     props = nil,
-    stars = {},
     star = {},
     book_state = 2,
     summary = {
@@ -64,23 +63,13 @@ function ReaderBookComplete:init()
     self.large_font_face = Font:getFace("ffont", 25)
 
     self.star = Button:new {
-        icon = "resources/icons/appbar.chevron.up.png",
-        --text = "S",
-        width = 32,
-        height = 32,
+        icon = "resources/icons/stats.star.empty.png",
         bordersize = 0,
         radius = 0,
         margin = 0,
         enabled = true,
         show_parent = self,
     }
-
-    function self.star:onFocus()
-        DEBUG("BANZAI");
-        --self.file= "resources/icons/appbar.chevron.down.png"
-        --self:getSize()
-        --self:_render()
-    end
 
     self.status = FrameContainer:new {
         dimen = Screen:getSize(),
@@ -182,9 +171,9 @@ function ReaderBookComplete:addHeader(width, height, title)
         titleWidget,
     }
 
-    table.insert(group, line_container);
-    table.insert(group, text_container);
-    table.insert(group, line_container);
+    table.insert(group, line_container)
+    table.insert(group, text_container)
+    table.insert(group, line_container)
     return group
 end
 
@@ -215,10 +204,9 @@ function ReaderBookComplete:generateSwitchGroup(width, height)
         name = "book_status",
         alternate = false,
         enabled = true,
-    };
+    }
 
-    local switch =
-    ToggleSwitch:new {
+    local switch = ToggleSwitch:new {
         width = width * 0.6,
         default_value = config.default_value,
         name = config.name,
@@ -235,14 +223,11 @@ function ReaderBookComplete:generateSwitchGroup(width, height)
 
     switch:setPosition(self.book_state)
 
-    table.insert(switch_container, switch);
+    table.insert(switch_container, switch)
     return switch_container
 end
 
 function ReaderBookComplete:onChangeBookStatus(option_name, option_value)
-    DEBUG("ON CHANGE BOOK STATUS", option_name, option_value)
-    DEBUG(option_name[option_value])
-
     local curr_time = TimeVal:now()
     self.summary.status = option_name[option_value]
     self.summary.modified = os.date("%Y-%m-%d", curr_time.sec)
@@ -251,7 +236,7 @@ function ReaderBookComplete:onChangeBookStatus(option_name, option_value)
 end
 
 function ReaderBookComplete:onUpdateNote()
-    DEBUG("UPDATE NOTE", self.input_note:getText())
+    --DEBUG("UPDATE NOTE", self.input_note:getText())
     self.summary.note = self.input_note:getText()
     self:saveSummary()
     return true
@@ -259,7 +244,6 @@ end
 
 
 function ReaderBookComplete:saveSummary()
-    self.summary.rating = 5
     --self.doc_settings:saveSetting("summary", self.summary)
     DEBUG("SAVE SUMMARY", self.summary)
 end
@@ -319,27 +303,17 @@ end
 
 function ReaderBookComplete:generateRateGroup(width, height)
 
-    self.stars_group = HorizontalGroup:new { align = "center" }
+    local stars_group = HorizontalGroup:new { align = "center" }
 
-    table.insert(self.stars, self.star:new { callback = function() self:setStar(1) end })
-    table.insert(self.stars, self.star:new { callback = function() self:setStar(2) end })
-    table.insert(self.stars, self.star:new { callback = function() self:setStar(3) end })
-    table.insert(self.stars, self.star:new { callback = function() self:setStar(4) end })
-    table.insert(self.stars, self.star:new { callback = function() self:setStar(5) end })
-
-    table.insert(self.stars_group, self.stars[1])
-    table.insert(self.stars_group, HorizontalSpan:new { width = 20 })
-    table.insert(self.stars_group, self.stars[2])
-    table.insert(self.stars_group, HorizontalSpan:new { width = 20 })
-    table.insert(self.stars_group, self.stars[3])
-    table.insert(self.stars_group, HorizontalSpan:new { width = 20 })
-    table.insert(self.stars_group, self.stars[4])
-    table.insert(self.stars_group, HorizontalSpan:new { width = 20 })
-    table.insert(self.stars_group, self.stars[5])
+    table.insert(stars_group, self.star:new { callback = function() self:setStar(1) end })
+    table.insert(stars_group, self.star:new { callback = function() self:setStar(2) end })
+    table.insert(stars_group, self.star:new { callback = function() self:setStar(3) end })
+    table.insert(stars_group, self.star:new { callback = function() self:setStar(4) end })
+    table.insert(stars_group, self.star:new { callback = function() self:setStar(5) end })
 
     self.stars_container = CenterContainer:new {
         dimen = Geom:new { w = width, h = height },
-        self.stars_group
+        stars_group
     }
 
     return self.stars_container
@@ -347,12 +321,24 @@ end
 
 function ReaderBookComplete:setStar(num)
     DEBUG("GOT NUMB", num)
+    --clear previous data
+    self.stars_container:clear()
+
+    local stars_group = HorizontalGroup:new { align = "center" }
     for i = 1, num do
-        self.stars[1]:free()
-        table.remove(self.stars, 1)
-        table.insert(self.stars, 1, self.star:new { icon = "resources/icons/appbar.settings.png", callback = function() self:setStar(i) end })
+        table.insert(stars_group, self.star:new { icon = "resources/icons/stats.star.full.png", callback = function() self:setStar(i) end })
     end
+
+    for i = num + 1, 5 do
+        table.insert(stars_group, self.star:new { callback = function() self:setStar(i) end })
+    end
+
+    table.insert(self.stars_container, stars_group)
+
     UIManager:setDirty("all")
+    self.summary.rating = num
+    self:saveSummary()
+    return true
 end
 
 --TODO generate by data from table
