@@ -42,6 +42,7 @@ local ReaderActivityIndicator = require("apps/reader/modules/readeractivityindic
 local FileManagerHistory = require("apps/filemanager/filemanagerhistory")
 local ReaderSearch = require("apps/reader/modules/readersearch")
 local ReaderLink = require("apps/reader/modules/readerlink")
+local ReaderBookComplete = require("apps/reader/modules/readerbookcomplete")
 local PluginLoader = require("apps/reader/pluginloader")
 
 --[[
@@ -297,6 +298,12 @@ function ReaderUI:init()
         ui = self
     })
 
+--[[    self:registerModule("bookcomplete", ReaderBookComplete:new{
+        view = self.view,
+        ui = self,
+        document = self.document,
+    })]]
+
     -- koreader plugins
     for _,module in ipairs(PluginLoader:loadPlugins()) do
         DEBUG("Loaded plugin", module.name, "at", module.path)
@@ -374,8 +381,16 @@ function ReaderUI:doShowReader(file)
         dimen = Screen:getSize(),
         document = document,
     }
+
+    local complete = ReaderBookComplete:new {
+        thumbnail = document:getCoverPageImage(),
+        total_pages = document:getPageCount(),
+        props = document:getProps(),
+    }
+
     UIManager:show(reader)
     running_instance = reader
+    UIManager:show(complete)
 end
 
 function ReaderUI:unlockDocumentWithPassword(document, try_again)

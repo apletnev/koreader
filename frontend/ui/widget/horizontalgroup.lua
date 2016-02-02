@@ -1,4 +1,6 @@
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
+local Blitbuffer = require("ffi/blitbuffer")
+local DEBUG = require("dbg")
 
 --[[
 A Layout widget that puts objects besides each others
@@ -6,6 +8,9 @@ A Layout widget that puts objects besides each others
 local HorizontalGroup = WidgetContainer:new{
     align = "center",
     _size = nil,
+    bordersize  = 0,
+    color = Blitbuffer.COLOR_BLACK,
+    radius = 0,
 }
 
 function HorizontalGroup:getSize()
@@ -35,10 +40,26 @@ function HorizontalGroup:paintTo(bb, x, y)
             widget:paintTo(bb,
                 x + self._offsets[i].x,
                 y + math.floor((size.h - self._offsets[i].y) / 2))
+            if self.bordersize > 0 then
+                bb:paintBorder(x + self._offsets[i].x,
+                    y + math.floor((size.h - self._offsets[i].y) / 2),
+                    size.w, size.h,
+                    self.bordersize, self.color, self.radius)
+            end
         elseif self.align == "top" then
             widget:paintTo(bb, x + self._offsets[i].x, y)
+            if self.bordersize > 0 then
+                bb:paintBorder(x + self._offsets[i].x, y,
+                    size.w, size.h,
+                    self.bordersize, self.color, self.radius)
+            end
         elseif self.align == "bottom" then
             widget:paintTo(bb, x + self._offsets[i].x, y + size.h - self._offsets[i].y)
+            if self.bordersize > 0 then
+                bb:paintBorder(x + self._offsets[i].x, y + size.h - self._offsets[i].y,
+                    size.w, size.h,
+                    self.bordersize, self.color, self.radius)
+            end
         end
     end
 end

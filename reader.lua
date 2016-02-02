@@ -135,14 +135,19 @@ if ARGV[argidx] and ARGV[argidx] ~= "" then
     -- if file is given in command line argument or open last document is set true
     -- the given file or the last file is opened in the reader
     if file then
+        --local BookComplete = require("apps/reader/modules/readerbookcomplete")
+        --BookComplete:show(file)
         local ReaderUI = require("apps/reader/readerui")
         ReaderUI:showReader(file)
     -- we assume a directory is given in command line argument
     -- the filemanger will show the files in that path
     else
-        local FileManager = require("apps/filemanager/filemanager")
+        --local FileManager = require("apps/filemanager/filemanager")
+        --local home_dir = G_reader_settings:readSetting("home_dir") or ARGV[argidx]
+        --FileManager:showFiles(home_dir)
+        local BookComplete = require("apps/reader/modules/readerbookcomplete")
         local home_dir = G_reader_settings:readSetting("home_dir") or ARGV[argidx]
-        FileManager:showFiles(home_dir)
+        BookComplete:show()
     end
     UIManager:run()
 elseif last_file then
