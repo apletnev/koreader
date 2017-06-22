@@ -39,6 +39,7 @@ local Device = require("device")
 local Screen = require("device").screen
 local Blitbuffer = require("ffi/blitbuffer")
 local InputText = require("ui/widget/inputtext")
+local Histogram = require("ui/widget/charts/histogram")
 
 DEBUG:turnOn()
 
@@ -440,14 +441,28 @@ function testNetworkSetting()
     UIManager:show(nw)
 end
 
+-- https://bl.ocks.org/mbostock/3048450
+function testHistogramChart()
+    local chart_data = { 1, 10, 3, 6, 1, 4 }
+    local chart = Histogram:new{
+        data = chart_data,
+        width = 500,
+        height = 200,
+        margin = {top= 10, right= 30, bottom= 30, left= 30},
+        color = Blitbuffer.COLOR_GREY,
+        background = Blitbuffer.COLOR_WHITE,
+        border = 1,
+    }
+    UIManager:show(chart)
+end
 
 -----------------------------------------------------------------------
 -- you may want to uncomment following show calls to see the changes
 -----------------------------------------------------------------------
 --UIManager:show(Background:new())
 --UIManager:show(TestGrid)
-UIManager:show(TestVisible)
-UIManager:show(Clock:new())
+--UIManager:show(TestVisible)
+--UIManager:show(Clock:new())
 -- UIManager:show(M)
 --UIManager:show(Quiz)
 --UIManager:show(readerwindow)
@@ -458,5 +473,6 @@ UIManager:show(Clock:new())
 -- testKeyValuePage()
 -- testTouchProbe()
 -- testBookStatus()
-testNetworkSetting()
+-- testNetworkSetting()
+    testHistogramChart()
 UIManager:run()
