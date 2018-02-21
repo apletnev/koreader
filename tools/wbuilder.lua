@@ -395,7 +395,7 @@ end
 
 function testTouchProbe()
     local TouchProbe = require("tools/kobo_touch_probe")
-    UIManager:show(TouchProbe:new{})
+
 end
 
 function testNetworkSetting()
@@ -441,12 +441,18 @@ function testNetworkSetting()
 end
 
 
+function testShultsTable()
+    local nw = require("ui/widget/schultetable"):new{}
+    UIManager:show(nw)
+end
+
+
 -----------------------------------------------------------------------
 -- you may want to uncomment following show calls to see the changes
 -----------------------------------------------------------------------
 --UIManager:show(Background:new())
 --UIManager:show(TestGrid)
-UIManager:show(TestVisible)
+-- UIManager:show(TestVisible)
 UIManager:show(Clock:new())
 -- UIManager:show(M)
 --UIManager:show(Quiz)
@@ -458,5 +464,6 @@ UIManager:show(Clock:new())
 -- testKeyValuePage()
 -- testTouchProbe()
 -- testBookStatus()
-testNetworkSetting()
+--testNetworkSetting()
+testShultsTable()
 UIManager:run()
