@@ -135,6 +135,7 @@ function SchulteTable:createUI(readSettings)
     end
 
     DEBUG("---------")
+    DEBUG("keys width: " ,#self.KEYS[1] + 1, #self.keys[1])
     DEBUG("widht: " ,self.width)
     DEBUG("height: ",self.height)
     DEBUG("bordersize: ",self.bordersize)

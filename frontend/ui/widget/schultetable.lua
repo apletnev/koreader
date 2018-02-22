@@ -1,4 +1,3 @@
-local Widget = require("ui/widget/widget")
 local InputContainer = require("ui/widget/container/inputcontainer")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
@@ -10,12 +9,11 @@ local Geom = require("ui/geometry")
 local Screen = require("device").screen
 local Font = require("ui/font")
 local _ = require("gettext")
-local LuaSettings = require("luasettings")
-local DataStorage = require("datastorage")
 local Blitbuffer = require("ffi/blitbuffer")
 local TextWidget = require("ui/widget/textwidget")
 local Size = require("ui/size")
 local DEBUG = require("dbg")
+local ToggleSwitch = require("ui/widget/toggleswitch")
 
 DEBUG:turnOn()
 
@@ -27,8 +25,6 @@ local SchulteNumber = InputContainer:new {
     face = Font:getFace("infont"),
     key_padding = Size.padding.default,
     padding = Size.padding.small,
-    width = Screen:scaleBySize(600),
-    height = math.max(Screen:getWidth(), Screen:getHeight())*0.33,
 }
 
 function SchulteNumber:init()
@@ -40,7 +36,7 @@ function SchulteNumber:init()
         margin = 0,
         bordersize = 1,
         background = Blitbuffer.COLOR_WHITE,
-        radius = 1,
+        radius = 0,
         padding = 0,
         CenterContainer:new{
             dimen = Geom:new{
@@ -65,8 +61,9 @@ local SchulteTable = InputContainer:extend{
     face = Font:getFace("infont"),
     key_padding = Screen:scaleBySize(5),
     padding = Screen:scaleBySize(2),
-    width = Screen:scaleBySize(600),
-    height = nil,
+    width = Screen:getWidth() / 2,
+    height = Screen:getWidth() / 2,
+    medium_font_face = Font:getFace("ffont"),
 }
 
 function SchulteTable:init()
@@ -85,7 +82,6 @@ function SchulteTable:init()
         [5] = {21, 23, 25, 22, 24},
     }
 
-    self.height = Screen:scaleBySize(600)
     self:createUI(true)
 end
 
@@ -114,16 +110,12 @@ function SchulteTable:createUI(readSettings)
     for i = 1, #self.KEYS do
         local horizontal_group = HorizontalGroup:new{}
         for j = 1, #self.KEYS[i] do
-            local width_factor = 1.0
-            local key_width = math.floor((base_key_width + self.key_padding) * width_factor) - self.key_padding
-            local key_height = base_key_height
-            local label = self.KEYS[i][j]
-            local key = SchulteNumber:new{
-                label = label,
-                width = key_width,
-                height = key_height,
+            local schult_number = SchulteNumber:new{
+                label = self.KEYS[i][j],
+                width = math.floor(base_key_width + self.key_padding) - self.key_padding,
+                height = base_key_height,
             }
-            table.insert(horizontal_group, key)
+            table.insert(horizontal_group, schult_number)
             if j ~= #self.KEYS[i] then
                 table.insert(horizontal_group, h_key_padding)
             end
@@ -134,7 +126,67 @@ function SchulteTable:createUI(readSettings)
         end
     end
 
+    local schult_table_result = HorizontalGroup:new{}
+    table.insert(schult_table_result, HorizontalSpan:new{width = self.width / 2})
+    table.insert(schult_table_result, CenterContainer:new{
+            dimen = Geom:new{
+                w = self.width - 2*self.bordersize -2*self.padding - 4,
+                h = self.height - 2*self.bordersize -2*self.padding - 4,
+            },
+            vertical_group})
+
+
+
+    local buttons_group = HorizontalGroup:new{}
+
+    local sizeConfig = {
+        default_value = 0,
+        args = { "incSize", "decSize" },
+        default_arg = "",
+        toggle = { _("decrease"), _("increase") },
+        values = { 1, 2, 3 },
+        name = "Table size",
+        alternate = false,
+        enabled = true,
+    }
+
+    local sizeSwitch = ToggleSwitch:new{
+        width = self.width,
+        default_value = 0,
+        name = sizeConfig.name,
+        name_text = "My text name",
+        event = "ChangeTableSize",
+        toggle = sizeConfig.toggle,
+        args = sizeConfig.args,
+        alternate = sizeConfig.alternate,
+        default_arg = sizeConfig.default_arg,
+        values = sizeConfig.values,
+        enabled = sizeConfig.enable,
+        config = self,
+        readonly = self.readonly,
+    }
+
+
+    table.insert(buttons_group, sizeSwitch)
+    --table.insert(buttons_group, HorizontalSpan:new{width = self.width / 3})
+
+
+    --table.insert(buttons_group, button_minus)
+    -- table.insert(buttons_group, HorizontalSpan:new{width = self.width * 0.1})
+   -- table.insert(buttons_group, button_plus)
+
+    local main = VerticalGroup:new{}
+    table.insert(main, schult_table_result)
+    table.insert(main, VerticalSpan:new())
+    table.insert(main, buttons_group)
+
+
     DEBUG("---------")
+    --DEBUG("result: " ,schult_table_result)
+    DEBUG("vertical span width: " ,self.width / 2)
+    DEBUG("screen width: " ,Screen:getWidth())
+    DEBUG("screen width by scale: " ,Screen:scaleBySize(Screen:getWidth()))
+    DEBUG("keys width: " ,#self.KEYS[1] + 1)
     DEBUG("widht: " ,self.width)
     DEBUG("height: ",self.height)
     DEBUG("bordersize: ",self.bordersize)
@@ -146,14 +198,9 @@ function SchulteTable:createUI(readSettings)
         background = Blitbuffer.COLOR_WHITE,
         radius = 0,
         padding = self.padding,
-        CenterContainer:new{
-            dimen = Geom:new{
-                w = self.width - 2*self.bordersize -2*self.padding - 4,
-                h = self.height - 2*self.bordersize -2*self.padding - 4,
-            },
-            vertical_group,
-        }
+        width = Screen:getWidth(),
+        height = Screen:getHeight(),
+        main
     }
 end
-
 return SchulteTable
