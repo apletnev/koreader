@@ -64,37 +64,70 @@ local SchulteTable = InputContainer:extend{
     width = Screen:getWidth() / 2,
     height = Screen:getWidth() / 2,
     medium_font_face = Font:getFace("ffont"),
+    table_size = 3,
 }
 
 function SchulteTable:init()
---[[    if not self.settings then self:readSettingsFile() end
+    --[[    if not self.settings then self:readSettingsFile() end
 
-    self.is_enabled = self.settings:readSetting("is_enabled") or false
-    if not self.is_enabled then
-        return
-    end]]
+        self.is_enabled = self.settings:readSetting("is_enabled") or false
+        if not self.is_enabled then
+            return
+        end]]
 
-   self.KEYS = {
+    local numbs = {}
+    for i = 1, self.table_size * self.table_size do
+        numbs[i] = false
+    end
+
+    DEBUG(numbs)
+
+    self.KEYS = {}
+    math.randomseed(os.time())
+    for i = 1, self.table_size do
+        self.KEYS[i] = {}
+        for j = 1, self.table_size do
+            local numb
+            local repeatUntil
+            repeat
+                repeatUntil = false
+                numb = math.random(1, self.table_size * self.table_size);
+                if numbs[numb] == false then
+                    repeatUntil = true
+                    numbs[numb] = true
+                    self.KEYS[i][j] = numb
+                    DEBUG(i, j, self.KEYS[i][j], repeatUntil)
+                end
+            until repeatUntil == false
+        end
+    end
+    DEBUG(numbs)
+
+    DEBUG(self.KEYS)
+
+--[[
+    self.KEYS = {
         [1] = {1, 3, 5, 7, 9},
         [2] = {2, 4, 6, 8, 10},
         [3] = {11, 13, 15, 17, 19},
         [4] = {12, 14, 16, 18, 20},
         [5] = {21, 23, 25, 22, 24},
     }
+]]
 
     self:createUI(true)
 end
 
 function SchulteTable:createUI(readSettings)
---[[
-    if readSettings then
-        self.line_thickness = tonumber(self.settings:readSetting("line_thick"))
-        self.margin = tonumber(self.settings:readSetting("margin"))
-        self.line_color_intensity = tonumber(self.settings:readSetting("line_color_intensity"))
-        self.shift_each_pages = tonumber(self.settings:readSetting("shift_each_pages"))
-        self.page_counter = tonumber(self.settings:readSetting("page_counter"))
-    end
-]]
+    --[[
+        if readSettings then
+            self.line_thickness = tonumber(self.settings:readSetting("line_thick"))
+            self.margin = tonumber(self.settings:readSetting("margin"))
+            self.line_color_intensity = tonumber(self.settings:readSetting("line_color_intensity"))
+            self.shift_each_pages = tonumber(self.settings:readSetting("shift_each_pages"))
+            self.page_counter = tonumber(self.settings:readSetting("page_counter"))
+        end
+    ]]
 
     --self.screen_width = Screen:getWidth()
     --self.screen_height = Screen:getHeight()
@@ -129,11 +162,11 @@ function SchulteTable:createUI(readSettings)
     local schult_table_result = HorizontalGroup:new{}
     table.insert(schult_table_result, HorizontalSpan:new{width = self.width / 2})
     table.insert(schult_table_result, CenterContainer:new{
-            dimen = Geom:new{
-                w = self.width - 2*self.bordersize -2*self.padding - 4,
-                h = self.height - 2*self.bordersize -2*self.padding - 4,
-            },
-            vertical_group})
+        dimen = Geom:new{
+            w = self.width - 2*self.bordersize -2*self.padding - 4,
+            h = self.height - 2*self.bordersize -2*self.padding - 4,
+        },
+        vertical_group})
 
 
 
@@ -173,7 +206,7 @@ function SchulteTable:createUI(readSettings)
 
     --table.insert(buttons_group, button_minus)
     -- table.insert(buttons_group, HorizontalSpan:new{width = self.width * 0.1})
-   -- table.insert(buttons_group, button_plus)
+    -- table.insert(buttons_group, button_plus)
 
     local main = VerticalGroup:new{}
     table.insert(main, schult_table_result)
