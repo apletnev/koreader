@@ -21,7 +21,7 @@ local SchulteNumber = InputContainer:new {
     label = nil,
     bordersize = Size.border.default,
     face = Font:getFace("infont"),
-    key_padding = Size.padding.default,
+    cell_padding = Size.padding.default,
     padding = Size.padding.small,
 }
 
@@ -57,12 +57,13 @@ local SchulteTable = InputContainer:extend{
     margin = 0.1,
     bordersize = Screen:scaleBySize(1),
     face = Font:getFace("infont"),
-    key_padding = Screen:scaleBySize(5),
-    padding = Screen:scaleBySize(2),
-    width = Screen:getWidth() / 2,
-    height = Screen:getWidth() / 2,
+    cell_padding = Screen:scaleBySize(5),
+    table_padding = Screen:scaleBySize(2),
+    table_width = Screen:getWidth(), -- width
+    table_height = Screen:getWidth() / 2,
     medium_font_face = Font:getFace("ffont"),
-    table_size = 5,
+    table_size = 2, --cells count
+    padding = Size.padding.small,
 }
 
 function SchulteTable:init()
@@ -76,10 +77,10 @@ function SchulteTable:generateNumbers()
         numbs[i] = false
     end
 
-    self.NUMBS = {}
+    self.CELLS = {}
     math.randomseed(os.time())
     for i = 1, self.table_size do
-        self.NUMBS[i] = {}
+        self.CELLS[i] = {}
         for j = 1, self.table_size do
             local numb
             local repeatUntil
@@ -88,7 +89,7 @@ function SchulteTable:generateNumbers()
                 numb = math.random(1, self.table_size * self.table_size);
                 if not numbs[numb] then
                     numbs[numb] = true
-                    self.NUMBS[i][j] = numb
+                    self.CELLS[i][j] = numb
                     break
                 end
             until repeatUntil ~= false
@@ -97,73 +98,95 @@ function SchulteTable:generateNumbers()
 end
 
 function SchulteTable:createUI(readSettings)
-    local base_key_width =  math.floor((self.width - (#self.NUMBS[1] + 1)*self.key_padding - 2*self.padding)/#self.NUMBS[1])
-    local base_key_height =  math.floor((self.height - (#self.NUMBS + 1)*self.key_padding - 2*self.padding)/#self.NUMBS)
-    local h_key_padding = HorizontalSpan:new{width = self.key_padding}
-    local v_key_padding = VerticalSpan:new{width = self.key_padding}
+    local base_cell_width =  math.floor((self.table_width - (#self.CELLS[1] + 1)*self.cell_padding - 2*self.table_padding)/#self.CELLS[1])
+    local base_cell_height =  math.floor((self.table_height - (#self.CELLS + 1)*self.cell_padding - 2*self.table_padding)/#self.CELLS)
+    DEBUG('CELL WIDHT HEIGHT', base_cell_width, base_cell_height)
+    local h_cell_padding = HorizontalSpan:new{width = self.cell_padding }
+    local v_cell_padding = VerticalSpan:new{width = self.cell_padding}
     local vertical_group = VerticalGroup:new{}
 
-    for i = 1, #self.NUMBS do
+    for i = 1, #self.CELLS do
         local horizontal_group = HorizontalGroup:new{}
-        for j = 1, #self.NUMBS[i] do
+        for j = 1, #self.CELLS[i] do
             local schult_number = SchulteNumber:new{
-                label = self.NUMBS[i][j],
-                width = math.floor(base_key_width + self.key_padding) - self.key_padding,
-                height = base_key_height,
+                label = self.CELLS[i][j],
+                width = math.floor(base_cell_width + self.cell_padding) - self.cell_padding,
+                height = base_cell_height,
             }
             table.insert(horizontal_group, schult_number)
-            if j ~= #self.NUMBS[i] then
-                table.insert(horizontal_group, h_key_padding)
+            if j ~= #self.CELLS[i] then
+                table.insert(horizontal_group, h_cell_padding)
             end
         end
         table.insert(vertical_group, horizontal_group)
-        if i ~= #self.NUMBS then
-            table.insert(vertical_group, v_key_padding)
+        if i ~= #self.CELLS then
+            table.insert(vertical_group, v_cell_padding)
         end
     end
 
     local schult_table_result = HorizontalGroup:new{}
-    table.insert(schult_table_result, HorizontalSpan:new{width = self.width / 2})
+    --table.insert(schult_table_result, HorizontalSpan:new{width = self.width / 2}) --TODO: use in case when table is small
     table.insert(schult_table_result, CenterContainer:new{
         dimen = Geom:new{
-            w = self.width - 2*self.bordersize -2*self.padding - 4,
-            h = self.height - 2*self.bordersize -2*self.padding - 4,
+            w = self.table_width - 2*self.bordersize -2*self.table_padding - 4,
+            h = self.table_height - 2*self.bordersize -2*self.table_padding - 4,
         },
+        bordersize = 1,
         vertical_group})
 
+    --DEBUG('TABLE', vertical_group)
 
+    local size_buttons_group = HorizontalGroup:new {}
 
-    local buttons_group = HorizontalGroup:new{}
-
-    local sizeConfig = {
+    local sizeSwitch = CenterContainer:new {
+        dimen = Geom:new{
+            w = Screen:getWidth() / 2,
+            h = Screen:getHeight() * 0.5,
+        },
+        ToggleSwitch:new {
+        width = Screen:getWidth(),
         default_value = 0,
-        args = { "incSize", "decSize" },
-        default_arg = "",
-        toggle = { _("decrease"), _("increase") },
-        values = { 1, 2, 3 },
-        name = "Table size",
-        alternate = false,
-        enabled = true,
-    }
-
-    local sizeSwitch = ToggleSwitch:new{
-        width = self.width,
-        default_value = 0,
-        name = sizeConfig.name,
+        name = "Table Size",
         name_text = "My text name",
         event = "ChangeTableSize",
-        toggle = sizeConfig.toggle,
-        args = sizeConfig.args,
-        alternate = sizeConfig.alternate,
-        default_arg = sizeConfig.default_arg,
-        values = sizeConfig.values,
-        enabled = sizeConfig.enable,
+        toggle = { _("decrease"), _("increase") },
+        args = { "incSize", "decSize" },
+        alternate = false,
+        default_arg = "",
+        values = { 1, 2 },
+        enabled = true,
         config = self,
-        readonly = self.readonly,
+        readonly = false,
+    } }
+
+    table.insert(size_buttons_group, sizeSwitch)
+
+
+    local cells_buttons_group = HorizontalGroup:new{}
+    local cellsSwitch = CenterContainer:new{
+        dimen = Geom:new{
+            w = Screen:getWidth() / 2,
+            h = Screen:getHeight() * 0.5,
+        },
+        ToggleSwitch:new{
+        width = Screen:getWidth(),
+        default_value = 0,
+        name = "Cells count",
+        name_text = "Cells count",
+        event = "ChangeCellsCount",
+        toggle = { _("decrease"), _("increase") },
+        args = { "incCells", "decCells" },
+        alternate = false,
+        default_arg = "",
+        values = {1, 2},
+        enabled = true,
+        config = self,
+        readonly = false,
     }
+    }
+    table.insert(cells_buttons_group, cellsSwitch)
 
 
-    table.insert(buttons_group, sizeSwitch)
     --table.insert(buttons_group, HorizontalSpan:new{width = self.width / 3})
 
 
@@ -171,26 +194,28 @@ function SchulteTable:createUI(readSettings)
     -- table.insert(buttons_group, HorizontalSpan:new{width = self.width * 0.1})
     -- table.insert(buttons_group, button_plus)
 
-    local main = VerticalGroup:new{}
-    table.insert(main, schult_table_result)
-    table.insert(main, VerticalSpan:new())
-    table.insert(main, buttons_group)
+    local main = VerticalGroup:new{HorizontalGroup:new{schult_table_result}}
+    --table.insert(main, schult_table_result)
+    table.insert(main, VerticalSpan:new{width = self.cell_padding})
+    table.insert(main, HorizontalGroup:new{size_buttons_group})
+    --table.insert(main, VerticalSpan:new{width = self.cell_padding})
+    --table.insert(main, cells_buttons_group)
 
 
     DEBUG("---------")
     --DEBUG("result: " ,schult_table_result)
-    DEBUG("vertical span width: " ,self.width / 2)
+    DEBUG("vertical span width: " ,self.table_width / 2)
     DEBUG("screen width: " ,Screen:getWidth())
     DEBUG("screen width by scale: " ,Screen:scaleBySize(Screen:getWidth()))
-    DEBUG("NUMBS width: " ,#self.NUMBS[1] + 1)
-    DEBUG("widht: " ,self.width)
-    DEBUG("height: ",self.height)
+    DEBUG("CELLS width: " ,#self.CELLS[1] + 1)
+    DEBUG("widht: " ,self.table_width)
+    DEBUG("height: ",self.table_height)
     DEBUG("bordersize: ",self.bordersize)
-    DEBUG("padding: ",self.padding)
+    DEBUG("padding: ",self.table_padding)
     DEBUG("---------")
     self[1] = FrameContainer:new{
         margin = 2,
-        bordersize = 1,
+        bordersize = 0,
         background = Blitbuffer.COLOR_WHITE,
         radius = 0,
         padding = self.padding,
