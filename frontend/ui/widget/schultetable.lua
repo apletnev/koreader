@@ -19,8 +19,6 @@ DEBUG:turnOn()
 
 local SchulteNumber = InputContainer:new {
     label = nil,
-    -- width = nil,
-    -- height = math.max(Screen:getWidth(), Screen:getHeight()) * 0.33,
     bordersize = Size.border.default,
     face = Font:getFace("infont"),
     key_padding = Size.padding.default,
@@ -64,97 +62,62 @@ local SchulteTable = InputContainer:extend{
     width = Screen:getWidth() / 2,
     height = Screen:getWidth() / 2,
     medium_font_face = Font:getFace("ffont"),
-    table_size = 3,
+    table_size = 5,
 }
 
 function SchulteTable:init()
-    --[[    if not self.settings then self:readSettingsFile() end
+    self:generateNumbers()
+    self:createUI(true)
+end
 
-        self.is_enabled = self.settings:readSetting("is_enabled") or false
-        if not self.is_enabled then
-            return
-        end]]
-
+function SchulteTable:generateNumbers()
     local numbs = {}
     for i = 1, self.table_size * self.table_size do
         numbs[i] = false
     end
 
-    DEBUG(numbs)
-
-    self.KEYS = {}
+    self.NUMBS = {}
     math.randomseed(os.time())
     for i = 1, self.table_size do
-        self.KEYS[i] = {}
+        self.NUMBS[i] = {}
         for j = 1, self.table_size do
             local numb
             local repeatUntil
             repeat
                 repeatUntil = false
                 numb = math.random(1, self.table_size * self.table_size);
-                if numbs[numb] == false then
-                    repeatUntil = true
+                if not numbs[numb] then
                     numbs[numb] = true
-                    self.KEYS[i][j] = numb
-                    DEBUG(i, j, self.KEYS[i][j], repeatUntil)
+                    self.NUMBS[i][j] = numb
+                    break
                 end
-            until repeatUntil == false
+            until repeatUntil ~= false
         end
     end
-    DEBUG(numbs)
-
-    DEBUG(self.KEYS)
-
---[[
-    self.KEYS = {
-        [1] = {1, 3, 5, 7, 9},
-        [2] = {2, 4, 6, 8, 10},
-        [3] = {11, 13, 15, 17, 19},
-        [4] = {12, 14, 16, 18, 20},
-        [5] = {21, 23, 25, 22, 24},
-    }
-]]
-
-    self:createUI(true)
 end
 
 function SchulteTable:createUI(readSettings)
-    --[[
-        if readSettings then
-            self.line_thickness = tonumber(self.settings:readSetting("line_thick"))
-            self.margin = tonumber(self.settings:readSetting("margin"))
-            self.line_color_intensity = tonumber(self.settings:readSetting("line_color_intensity"))
-            self.shift_each_pages = tonumber(self.settings:readSetting("shift_each_pages"))
-            self.page_counter = tonumber(self.settings:readSetting("page_counter"))
-        end
-    ]]
-
-    --self.screen_width = Screen:getWidth()
-    --self.screen_height = Screen:getHeight()
-    --local line_height = screen_height * 0.9
-    --local line_top_position = screen_height * 0.05
-
-    local base_key_width =  math.floor((self.width - (#self.KEYS[1] + 1)*self.key_padding - 2*self.padding)/#self.KEYS[1])
-    local base_key_height =  math.floor((self.height - (#self.KEYS + 1)*self.key_padding - 2*self.padding)/#self.KEYS)
+    local base_key_width =  math.floor((self.width - (#self.NUMBS[1] + 1)*self.key_padding - 2*self.padding)/#self.NUMBS[1])
+    local base_key_height =  math.floor((self.height - (#self.NUMBS + 1)*self.key_padding - 2*self.padding)/#self.NUMBS)
     local h_key_padding = HorizontalSpan:new{width = self.key_padding}
     local v_key_padding = VerticalSpan:new{width = self.key_padding}
     local vertical_group = VerticalGroup:new{}
 
-    for i = 1, #self.KEYS do
+    for i = 1, #self.NUMBS do
         local horizontal_group = HorizontalGroup:new{}
-        for j = 1, #self.KEYS[i] do
+        for j = 1, #self.NUMBS[i] do
             local schult_number = SchulteNumber:new{
-                label = self.KEYS[i][j],
+                label = self.NUMBS[i][j],
                 width = math.floor(base_key_width + self.key_padding) - self.key_padding,
                 height = base_key_height,
             }
             table.insert(horizontal_group, schult_number)
-            if j ~= #self.KEYS[i] then
+            if j ~= #self.NUMBS[i] then
                 table.insert(horizontal_group, h_key_padding)
             end
         end
         table.insert(vertical_group, horizontal_group)
-        if i ~= #self.KEYS then
+        if i ~= #self.NUMBS then
             table.insert(vertical_group, v_key_padding)
         end
     end
@@ -219,7 +182,7 @@ function SchulteTable:createUI(readSettings)
     DEBUG("vertical span width: " ,self.width / 2)
     DEBUG("screen width: " ,Screen:getWidth())
     DEBUG("screen width by scale: " ,Screen:scaleBySize(Screen:getWidth()))
-    DEBUG("keys width: " ,#self.KEYS[1] + 1)
+    DEBUG("NUMBS width: " ,#self.NUMBS[1] + 1)
     DEBUG("widht: " ,self.width)
     DEBUG("height: ",self.height)
     DEBUG("bordersize: ",self.bordersize)
