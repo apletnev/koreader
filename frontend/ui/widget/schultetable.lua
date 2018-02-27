@@ -60,9 +60,9 @@ local SchulteTable = InputContainer:extend{
     cell_padding = Screen:scaleBySize(5),
     table_padding = Screen:scaleBySize(2),
     table_width = Screen:getWidth(), -- width
-    table_height = Screen:getWidth() / 2,
+    table_height = Screen:getWidth(),
     medium_font_face = Font:getFace("ffont"),
-    table_size = 2, --cells count
+    table_size = 5, --cells count
     padding = Size.padding.small,
 }
 
@@ -100,7 +100,6 @@ end
 function SchulteTable:createUI(readSettings)
     local base_cell_width =  math.floor((self.table_width - (#self.CELLS[1] + 1)*self.cell_padding - 2*self.table_padding)/#self.CELLS[1])
     local base_cell_height =  math.floor((self.table_height - (#self.CELLS + 1)*self.cell_padding - 2*self.table_padding)/#self.CELLS)
-    DEBUG('CELL WIDHT HEIGHT', base_cell_width, base_cell_height)
     local h_cell_padding = HorizontalSpan:new{width = self.cell_padding }
     local v_cell_padding = VerticalSpan:new{width = self.cell_padding}
     local vertical_group = VerticalGroup:new{}
@@ -131,23 +130,15 @@ function SchulteTable:createUI(readSettings)
             w = self.table_width - 2*self.bordersize -2*self.table_padding - 4,
             h = self.table_height - 2*self.bordersize -2*self.table_padding - 4,
         },
-        bordersize = 1,
         vertical_group})
 
     --DEBUG('TABLE', vertical_group)
 
     local size_buttons_group = HorizontalGroup:new {}
 
-    local sizeSwitch = CenterContainer:new {
-        dimen = Geom:new{
-            w = Screen:getWidth() / 2,
-            h = Screen:getHeight() * 0.5,
-        },
-        ToggleSwitch:new {
-        width = Screen:getWidth(),
+    local size_switch_buttons = ToggleSwitch:new {
+        width = Screen:getWidth() /2,
         default_value = 0,
-        name = "Table Size",
-        name_text = "My text name",
         event = "ChangeTableSize",
         toggle = { _("decrease"), _("increase") },
         args = { "incSize", "decSize" },
@@ -157,22 +148,27 @@ function SchulteTable:createUI(readSettings)
         enabled = true,
         config = self,
         readonly = false,
-    } }
+    }
 
-    table.insert(size_buttons_group, sizeSwitch)
+    local cells_size_caption = TextWidget:new {
+        text = _("Cells size"),
+        face = Font:getFace("infont"),
+    }
+
+    table.insert(size_buttons_group, cells_size_caption)
+    table.insert(size_buttons_group, HorizontalSpan:new{width = self.cell_padding})
+    table.insert(size_buttons_group, size_switch_buttons)
 
 
     local cells_buttons_group = HorizontalGroup:new{}
-    local cellsSwitch = CenterContainer:new{
-        dimen = Geom:new{
-            w = Screen:getWidth() / 2,
-            h = Screen:getHeight() * 0.5,
-        },
-        ToggleSwitch:new{
-        width = Screen:getWidth(),
+
+    local cells_count_caption = TextWidget:new {
+        text = _("Cells count"),
+        face = Font:getFace("infont"),
+    }
+    local cells_switch = ToggleSwitch:new{
+        width = Screen:getWidth() /2 ,
         default_value = 0,
-        name = "Cells count",
-        name_text = "Cells count",
         event = "ChangeCellsCount",
         toggle = { _("decrease"), _("increase") },
         args = { "incCells", "decCells" },
@@ -183,23 +179,17 @@ function SchulteTable:createUI(readSettings)
         config = self,
         readonly = false,
     }
-    }
-    table.insert(cells_buttons_group, cellsSwitch)
 
+    table.insert(cells_buttons_group, cells_count_caption)
+    table.insert(cells_buttons_group, HorizontalSpan:new{width = self.cell_padding})
+    table.insert(cells_buttons_group, cells_switch)
 
-    --table.insert(buttons_group, HorizontalSpan:new{width = self.width / 3})
-
-
-    --table.insert(buttons_group, button_minus)
-    -- table.insert(buttons_group, HorizontalSpan:new{width = self.width * 0.1})
-    -- table.insert(buttons_group, button_plus)
-
-    local main = VerticalGroup:new{HorizontalGroup:new{schult_table_result}}
-    --table.insert(main, schult_table_result)
+    local main = VerticalGroup:new{}
+    table.insert(main, schult_table_result)
     table.insert(main, VerticalSpan:new{width = self.cell_padding})
-    table.insert(main, HorizontalGroup:new{size_buttons_group})
-    --table.insert(main, VerticalSpan:new{width = self.cell_padding})
-    --table.insert(main, cells_buttons_group)
+    table.insert(main, size_buttons_group)
+    table.insert(main, VerticalSpan:new{width = self.cell_padding})
+    table.insert(main, cells_buttons_group)
 
 
     DEBUG("---------")
