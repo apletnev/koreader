@@ -14,6 +14,7 @@ local TextWidget = require("ui/widget/textwidget")
 local Size = require("ui/size")
 local DEBUG = require("dbg")
 local ToggleSwitch = require("ui/widget/toggleswitch")
+local UIManager = require("ui/uimanager")
 
 DEBUG:turnOn()
 
@@ -151,7 +152,7 @@ function SchulteTable:createUI(readSettings)
     }
 
     local cells_size_caption = TextWidget:new {
-        text = _("Cells size"),
+        text = _("Cells count"),
         face = Font:getFace("infont"),
     }
 
@@ -163,7 +164,7 @@ function SchulteTable:createUI(readSettings)
     local cells_buttons_group = HorizontalGroup:new{}
 
     local cells_count_caption = TextWidget:new {
-        text = _("Cells count"),
+        text = _("Cells size"),
         face = Font:getFace("infont"),
     }
     local cells_switch = ToggleSwitch:new{
@@ -214,4 +215,31 @@ function SchulteTable:createUI(readSettings)
         main
     }
 end
+
+function SchulteTable:onConfigChoose(values, name, event, args, events, position)
+    UIManager:scheduleIn(0.05, function()
+        if event == "ChangeTableSize" then
+            self:onChangeTableSize(args[position])
+        end
+        if event == "ChangeCellsCount" then
+            self:onChangeCellsCount(args[position])
+        end
+    end)
+end
+
+function SchulteTable:onChangeTableSize(direction)
+    local delta = direction == "incSize" and -1 or 1
+    self.table_size = self.table_size + delta
+    DEBUG("DELTA table size", delta, self.table_size)
+    -- self.ui:handleEvent(Event:new("SetFontSize", self.font_size))
+    return true
+end
+
+function SchulteTable:onChangeCellsCount(direction)
+    local delta = direction == "incCells" and -1 or 1
+    DEBUG("DELTA cells count", delta)
+    -- self.ui:handleEvent(Event:new("SetFontSize", self.font_size))
+    return true
+end
+
 return SchulteTable
