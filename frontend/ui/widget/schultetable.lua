@@ -12,11 +12,8 @@ local _ = require("gettext")
 local Blitbuffer = require("ffi/blitbuffer")
 local TextWidget = require("ui/widget/textwidget")
 local Size = require("ui/size")
-local DEBUG = require("dbg")
 local ToggleSwitch = require("ui/widget/toggleswitch")
 local UIManager = require("ui/uimanager")
-
-DEBUG:turnOn()
 
 local SchulteNumber = InputContainer:new {
     label = nil,
@@ -63,8 +60,10 @@ local SchulteTable = InputContainer:extend{
     table_width = Screen:getWidth(), -- width
     table_height = Screen:getWidth(),
     medium_font_face = Font:getFace("ffont"),
-    table_size = 5, --cells count
+    table_cells_count = 5, --cells count
     padding = Size.padding.small,
+    screen_width = Screen:getWidth(),
+    screen_height = Screen:getHeight()
 }
 
 function SchulteTable:init()
@@ -74,20 +73,20 @@ end
 
 function SchulteTable:generateNumbers()
     local numbs = {}
-    for i = 1, self.table_size * self.table_size do
+    for i = 1, self.table_cells_count * self.table_cells_count do
         numbs[i] = false
     end
 
     self.CELLS = {}
     math.randomseed(os.time())
-    for i = 1, self.table_size do
+    for i = 1, self.table_cells_count do
         self.CELLS[i] = {}
-        for j = 1, self.table_size do
+        for j = 1, self.table_cells_count do
             local numb
             local repeatUntil
             repeat
                 repeatUntil = false
-                numb = math.random(1, self.table_size * self.table_size);
+                numb = math.random(1, self.table_cells_count * self.table_cells_count);
                 if not numbs[numb] then
                     numbs[numb] = true
                     self.CELLS[i][j] = numb
@@ -98,7 +97,7 @@ function SchulteTable:generateNumbers()
     end
 end
 
-function SchulteTable:createUI(readSettings)
+function SchulteTable:generateTable()
     local base_cell_width =  math.floor((self.table_width - (#self.CELLS[1] + 1)*self.cell_padding - 2*self.table_padding)/#self.CELLS[1])
     local base_cell_height =  math.floor((self.table_height - (#self.CELLS + 1)*self.cell_padding - 2*self.table_padding)/#self.CELLS)
     local h_cell_padding = HorizontalSpan:new{width = self.cell_padding }
@@ -125,121 +124,107 @@ function SchulteTable:createUI(readSettings)
     end
 
     local schult_table_result = HorizontalGroup:new{}
-    --table.insert(schult_table_result, HorizontalSpan:new{width = self.width / 2}) --TODO: use in case when table is small
+    table.insert(schult_table_result, HorizontalSpan:new{width = (self.screen_width - self.table_width)/2})
     table.insert(schult_table_result, CenterContainer:new{
         dimen = Geom:new{
             w = self.table_width - 2*self.bordersize -2*self.table_padding - 4,
             h = self.table_height - 2*self.bordersize -2*self.table_padding - 4,
         },
         vertical_group})
+    table.insert(schult_table_result, HorizontalSpan:new{width = (self.screen_width - self.table_width)/2})
 
-    --DEBUG('TABLE', vertical_group)
+    return schult_table_result
+end
 
-    local size_buttons_group = HorizontalGroup:new {}
-
-    local size_switch_buttons = ToggleSwitch:new {
-        width = Screen:getWidth() /2,
+function SchulteTable:createTableSizeButton()
+    local size_buttons_group = HorizontalGroup:new{}
+    table.insert(size_buttons_group, TextWidget:new{text = _("Cells count"), face = Font:getFace("infont")})
+    table.insert(size_buttons_group, HorizontalSpan:new{width = self.cell_padding * 2})
+    table.insert(size_buttons_group, ToggleSwitch:new{
+        width = self.screen_width/2,
         default_value = 0,
-        event = "ChangeTableSize",
+        event = "ChangeCellsCount",
         toggle = { _("decrease"), _("increase") },
-        args = { "incSize", "decSize" },
+        args = { "decCount", "incCount" },
         alternate = false,
         default_arg = "",
         values = { 1, 2 },
         enabled = true,
         config = self,
         readonly = false,
-    }
+    })
+    return size_buttons_group
+end
 
-    local cells_size_caption = TextWidget:new {
-        text = _("Cells count"),
-        face = Font:getFace("infont"),
-    }
-
-    table.insert(size_buttons_group, cells_size_caption)
-    table.insert(size_buttons_group, HorizontalSpan:new{width = self.cell_padding})
-    table.insert(size_buttons_group, size_switch_buttons)
-
-
+function SchulteTable:createCellsSizeButton()
     local cells_buttons_group = HorizontalGroup:new{}
-
-    local cells_count_caption = TextWidget:new {
-        text = _("Cells size"),
-        face = Font:getFace("infont"),
-    }
-    local cells_switch = ToggleSwitch:new{
-        width = Screen:getWidth() /2 ,
+    table.insert(cells_buttons_group, TextWidget:new{text = _("Cells size"), face = Font:getFace("infont")})
+    table.insert(cells_buttons_group, HorizontalSpan:new{width = self.cell_padding * 2})
+    table.insert(cells_buttons_group, ToggleSwitch:new{
+        width = self.screen_width/2 ,
         default_value = 0,
-        event = "ChangeCellsCount",
+        event = "ChangeCellsSize",
         toggle = { _("decrease"), _("increase") },
-        args = { "incCells", "decCells" },
+        args = { "decSize", "incSize" },
         alternate = false,
         default_arg = "",
         values = {1, 2},
         enabled = true,
         config = self,
         readonly = false,
-    }
+    })
+    return cells_buttons_group
+end
 
-    table.insert(cells_buttons_group, cells_count_caption)
-    table.insert(cells_buttons_group, HorizontalSpan:new{width = self.cell_padding})
-    table.insert(cells_buttons_group, cells_switch)
+function SchulteTable:createUI(readSettings)
 
-    local main = VerticalGroup:new{}
-    table.insert(main, schult_table_result)
-    table.insert(main, VerticalSpan:new{width = self.cell_padding})
-    table.insert(main, size_buttons_group)
-    table.insert(main, VerticalSpan:new{width = self.cell_padding})
-    table.insert(main, cells_buttons_group)
+    local main = VerticalGroup:new{width = self.screen_width}
+    table.insert(main, self:generateTable())
+    table.insert(main, VerticalSpan:new{width = ((self.screen_height - self.table_height)) - (self.screen_height * 0.11)})
+    table.insert(main, self:createTableSizeButton())
+    table.insert(main, VerticalSpan:new{width = 5})
+    table.insert(main, self:createCellsSizeButton())
 
-
-    DEBUG("---------")
-    --DEBUG("result: " ,schult_table_result)
-    DEBUG("vertical span width: " ,self.table_width / 2)
-    DEBUG("screen width: " ,Screen:getWidth())
-    DEBUG("screen width by scale: " ,Screen:scaleBySize(Screen:getWidth()))
-    DEBUG("CELLS width: " ,#self.CELLS[1] + 1)
-    DEBUG("widht: " ,self.table_width)
-    DEBUG("height: ",self.table_height)
-    DEBUG("bordersize: ",self.bordersize)
-    DEBUG("padding: ",self.table_padding)
-    DEBUG("---------")
     self[1] = FrameContainer:new{
         margin = 2,
         bordersize = 0,
         background = Blitbuffer.COLOR_WHITE,
         radius = 0,
         padding = self.padding,
-        width = Screen:getWidth(),
-        height = Screen:getHeight(),
+        width = self.screen_width,
+        height = self.screen_height,
         main
     }
 end
 
 function SchulteTable:onConfigChoose(values, name, event, args, events, position)
     UIManager:scheduleIn(0.05, function()
-        if event == "ChangeTableSize" then
-            self:onChangeTableSize(args[position])
-        end
         if event == "ChangeCellsCount" then
-            self:onChangeCellsCount(args[position])
+                local delta = args[position] == "decCount" and -1 or 1
+            if self.table_cells_count + delta >= 3 and self.table_cells_count + delta <= 7 then
+                self.table_cells_count = self.table_cells_count + delta
+                self:generateNumbers()
+            end
+            self:createUI()
+            UIManager:setDirty(nil, "partial")
+            return true
+        end
+        if event == "ChangeCellsSize" then
+            if args[position] == "decSize" then
+                if self.table_height > (self.screen_width * 0.4) then
+                    self.table_width = self.table_width - (self.screen_width * 0.1)
+                end
+            else
+                if self.table_width + self.table_width * 0.1 < self.screen_width then
+                    self.table_width = self.table_width + (self.screen_width * 0.1)
+                end
+            end
+            self.table_height = self.table_width
+            UIManager:setDirty(nil, "partial")
+            self:createUI()
+            return true
         end
     end)
-end
-
-function SchulteTable:onChangeTableSize(direction)
-    local delta = direction == "incSize" and -1 or 1
-    self.table_size = self.table_size + delta
-    DEBUG("DELTA table size", delta, self.table_size)
-    -- self.ui:handleEvent(Event:new("SetFontSize", self.font_size))
-    return true
-end
-
-function SchulteTable:onChangeCellsCount(direction)
-    local delta = direction == "incCells" and -1 or 1
-    DEBUG("DELTA cells count", delta)
-    -- self.ui:handleEvent(Event:new("SetFontSize", self.font_size))
-    return true
 end
 
 return SchulteTable
