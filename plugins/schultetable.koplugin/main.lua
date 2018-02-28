@@ -1,4 +1,3 @@
-local Widget = require("ui/widget/widget")
 local InputContainer = require("ui/widget/container/inputcontainer")
 local FrameContainer = require("ui/widget/container/framecontainer")
 local HorizontalGroup = require("ui/widget/horizontalgroup")
@@ -6,29 +5,23 @@ local HorizontalSpan = require("ui/widget/horizontalspan")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
 local CenterContainer = require("ui/widget/container/centercontainer")
+local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local Geom = require("ui/geometry")
 local Screen = require("device").screen
 local Font = require("ui/font")
 local _ = require("gettext")
-local LuaSettings = require("luasettings")
-local DataStorage = require("datastorage")
 local Blitbuffer = require("ffi/blitbuffer")
 local TextWidget = require("ui/widget/textwidget")
 local Size = require("ui/size")
-local DEBUG = require("dbg")
-
-DEBUG:turnOn()
+local ToggleSwitch = require("ui/widget/toggleswitch")
+local UIManager = require("ui/uimanager")
 
 local SchulteNumber = InputContainer:new {
     label = nil,
-    -- width = nil,
-    -- height = math.max(Screen:getWidth(), Screen:getHeight()) * 0.33,
     bordersize = Size.border.default,
     face = Font:getFace("infont"),
-    key_padding = Size.padding.default,
+    cell_padding = Size.padding.default,
     padding = Size.padding.small,
-    width = Screen:scaleBySize(600),
-    height = math.max(Screen:getWidth(), Screen:getHeight())*0.33,
 }
 
 function SchulteNumber:init()
@@ -40,7 +33,7 @@ function SchulteNumber:init()
         margin = 0,
         bordersize = 1,
         background = Blitbuffer.COLOR_WHITE,
-        radius = 1,
+        radius = 0,
         padding = 0,
         CenterContainer:new{
             dimen = Geom:new{
@@ -57,104 +50,214 @@ function SchulteNumber:init()
 end
 
 
-local SchulteTable = InputContainer:extend{
-    is_enabled = nil,
+local SchulteTable = WidgetContainer:extend{
+    is_enabled = false,
     name = "Schulte table",
     margin = 0.1,
     bordersize = Screen:scaleBySize(1),
     face = Font:getFace("infont"),
-    key_padding = Screen:scaleBySize(5),
-    padding = Screen:scaleBySize(2),
-    width = Screen:scaleBySize(600),
-    height = nil,
+    cell_padding = Screen:scaleBySize(5),
+    table_padding = Screen:scaleBySize(2),
+    table_width = Screen:getWidth(), -- width
+    table_height = Screen:getWidth(),
+    medium_font_face = Font:getFace("ffont"),
+    table_cells_count = 5, --cells count
+    padding = Size.padding.small,
+    screen_width = Screen:getWidth(),
+    screen_height = Screen:getHeight(),
+    CELLS = {}
 }
 
 function SchulteTable:init()
-    --[[    if not self.settings then self:readSettingsFile() end
-
-        self.is_enabled = self.settings:readSetting("is_enabled") or false
-        if not self.is_enabled then
-            return
-        end]]
-
-    self.KEYS = {
-        [1] = {1, 3, 5, 7, 9},
-        [2] = {2, 4, 6, 8, 10},
-        [3] = {11, 13, 15, 17, 19},
-        [4] = {12, 14, 16, 18, 20},
-        [5] = {21, 23, 25, 22, 24},
-    }
-
-    self.height = Screen:scaleBySize(600)
+    if not self.is_enabled then
+        return
+    end
+    self:generateNumbers()
     self:createUI(true)
 end
 
-function SchulteTable:createUI(readSettings)
-    --[[
-        if readSettings then
-            self.line_thickness = tonumber(self.settings:readSetting("line_thick"))
-            self.margin = tonumber(self.settings:readSetting("margin"))
-            self.line_color_intensity = tonumber(self.settings:readSetting("line_color_intensity"))
-            self.shift_each_pages = tonumber(self.settings:readSetting("shift_each_pages"))
-            self.page_counter = tonumber(self.settings:readSetting("page_counter"))
+function SchulteTable:onReaderReady()
+    self.ui.menu:registerToMainMenu(self)
+    self.view:registerViewModule("schult_table", self)
+end
+
+function SchulteTable:resetLayout()
+    self:generateNumbers()
+    self:createUI(true)
+end
+
+function SchulteTable:addToMainMenu(menu_items)
+    menu_items.schulte_talbe = {
+        text = _("Speed reading module - Schulte's table"),
+        checked_func = function() return self.is_enabled end,
+        callback = function()
+            self.is_enabled = not self.is_enabled
+            if self.is_enabled then self:resetLayout() end
+            return true
+        end,
+    }
+end
+
+function SchulteTable:generateNumbers()
+    local numbs = {}
+    for i = 1, self.table_cells_count * self.table_cells_count do
+        numbs[i] = false
+    end
+
+    self.CELLS = {}
+    math.randomseed(os.time())
+    for i = 1, self.table_cells_count do
+        self.CELLS[i] = {}
+        for j = 1, self.table_cells_count do
+            local numb
+            local repeatUntil
+            repeat
+                repeatUntil = false
+                numb = math.random(1, self.table_cells_count * self.table_cells_count);
+                if not numbs[numb] then
+                    numbs[numb] = true
+                    self.CELLS[i][j] = numb
+                    break
+                end
+            until repeatUntil ~= false
         end
-    ]]
+    end
+end
 
-    --self.screen_width = Screen:getWidth()
-    --self.screen_height = Screen:getHeight()
-    --local line_height = screen_height * 0.9
-    --local line_top_position = screen_height * 0.05
-
-    local base_key_width =  math.floor((self.width - (#self.KEYS[1] + 1)*self.key_padding - 2*self.padding)/#self.KEYS[1])
-    local base_key_height =  math.floor((self.height - (#self.KEYS + 1)*self.key_padding - 2*self.padding)/#self.KEYS)
-    local h_key_padding = HorizontalSpan:new{width = self.key_padding}
-    local v_key_padding = VerticalSpan:new{width = self.key_padding}
+function SchulteTable:generateTable()
+    local base_cell_width =  math.floor((self.table_width - (#self.CELLS[1] + 1)*self.cell_padding - 2*self.table_padding)/#self.CELLS[1])
+    local base_cell_height =  math.floor((self.table_height - (#self.CELLS + 1)*self.cell_padding - 2*self.table_padding)/#self.CELLS)
+    local h_cell_padding = HorizontalSpan:new{width = self.cell_padding }
+    local v_cell_padding = VerticalSpan:new{width = self.cell_padding}
     local vertical_group = VerticalGroup:new{}
 
-    for i = 1, #self.KEYS do
+    for i = 1, #self.CELLS do
         local horizontal_group = HorizontalGroup:new{}
-        for j = 1, #self.KEYS[i] do
-            local width_factor = 1.0
-            local key_width = math.floor((base_key_width + self.key_padding) * width_factor) - self.key_padding
-            local key_height = base_key_height
-            local label = self.KEYS[i][j]
-            local key = SchulteNumber:new{
-                label = label,
-                width = key_width,
-                height = key_height,
+        for j = 1, #self.CELLS[i] do
+            local schult_number = SchulteNumber:new{
+                label = self.CELLS[i][j],
+                width = math.floor(base_cell_width + self.cell_padding) - self.cell_padding,
+                height = base_cell_height,
             }
-            table.insert(horizontal_group, key)
-            if j ~= #self.KEYS[i] then
-                table.insert(horizontal_group, h_key_padding)
+            table.insert(horizontal_group, schult_number)
+            if j ~= #self.CELLS[i] then
+                table.insert(horizontal_group, h_cell_padding)
             end
         end
         table.insert(vertical_group, horizontal_group)
-        if i ~= #self.KEYS then
-            table.insert(vertical_group, v_key_padding)
+        if i ~= #self.CELLS then
+            table.insert(vertical_group, v_cell_padding)
         end
     end
 
-    DEBUG("---------")
-    DEBUG("keys width: " ,#self.KEYS[1] + 1, #self.keys[1])
-    DEBUG("widht: " ,self.width)
-    DEBUG("height: ",self.height)
-    DEBUG("bordersize: ",self.bordersize)
-    DEBUG("padding: ",self.padding)
-    DEBUG("---------")
+    local schult_table_result = HorizontalGroup:new{}
+    table.insert(schult_table_result, HorizontalSpan:new{width = (self.screen_width - self.table_width)/2})
+    table.insert(schult_table_result, CenterContainer:new{
+        dimen = Geom:new{
+            w = self.table_width - 2*self.bordersize -2*self.table_padding - 4,
+            h = self.table_height - 2*self.bordersize -2*self.table_padding - 4,
+        },
+        vertical_group})
+    table.insert(schult_table_result, HorizontalSpan:new{width = (self.screen_width - self.table_width)/2})
+
+    return schult_table_result
+end
+
+function SchulteTable:createTableSizeButton()
+    local size_buttons_group = HorizontalGroup:new{}
+    table.insert(size_buttons_group, TextWidget:new{text = _("Cells count"), face = Font:getFace("infont")})
+    table.insert(size_buttons_group, HorizontalSpan:new{width = self.cell_padding * 2})
+    table.insert(size_buttons_group, ToggleSwitch:new{
+        width = self.screen_width * 0.2,
+        default_value = 0,
+        event = "ChangeCellsCount",
+        toggle = { _("-"), _("+") },
+        args = { "decCount", "incCount" },
+        alternate = false,
+        default_arg = "",
+        values = { 1, 2 },
+        enabled = true,
+        config = self,
+        readonly = false,
+    })
+    return size_buttons_group
+end
+
+function SchulteTable:createCellsSizeButton()
+    local cells_buttons_group = HorizontalGroup:new{}
+    table.insert(cells_buttons_group, TextWidget:new{text = _("Cells size"), face = Font:getFace("infont")})
+    table.insert(cells_buttons_group, HorizontalSpan:new{width = self.cell_padding * 2})
+    table.insert(cells_buttons_group, ToggleSwitch:new{
+        width = self.screen_width * 0.2 ,
+        default_value = 0,
+        event = "ChangeCellsSize",
+        toggle = { _("-"), _("+") },
+        args = { "decSize", "incSize" },
+        alternate = false,
+        default_arg = "",
+        values = {1, 2},
+        enabled = true,
+        config = self,
+        readonly = false,
+    })
+    return cells_buttons_group
+end
+
+function SchulteTable:createUI(readSettings)
+
+    local main = VerticalGroup:new{width = self.screen_width}
+    table.insert(main, self:generateTable())
+    table.insert(main, VerticalSpan:new{width = ((self.screen_height - self.table_height)) - (self.screen_height * 0.11)})
+    table.insert(main, self:createTableSizeButton())
+    table.insert(main, VerticalSpan:new{width = 5})
+    table.insert(main, self:createCellsSizeButton())
+
     self[1] = FrameContainer:new{
         margin = 2,
-        bordersize = 1,
+        bordersize = 0,
         background = Blitbuffer.COLOR_WHITE,
         radius = 0,
         padding = self.padding,
-        CenterContainer:new{
-            dimen = Geom:new{
-                w = self.width - 2*self.bordersize -2*self.padding - 4,
-                h = self.height - 2*self.bordersize -2*self.padding - 4,
-            },
-            vertical_group,
-        }
+        width = self.screen_width,
+        height = self.screen_height,
+        main
     }
+end
+
+function SchulteTable:onConfigChoose(values, name, event, args, events, position)
+    UIManager:scheduleIn(0.05, function()
+        if event == "ChangeCellsCount" then
+            local delta = args[position] == "decCount" and -1 or 1
+            if self.table_cells_count + delta >= 3 and self.table_cells_count + delta <= 7 then
+                self.table_cells_count = self.table_cells_count + delta
+                self:generateNumbers()
+            end
+            self:createUI()
+            UIManager:setDirty(nil, "partial")
+            return true
+        end
+        if event == "ChangeCellsSize" then
+            if args[position] == "decSize" then
+                if self.table_height > (self.screen_width * 0.4) then
+                    self.table_width = self.table_width - (self.screen_width * 0.1)
+                end
+            else
+                if self.table_width + self.table_width * 0.1 < self.screen_width then
+                    self.table_width = self.table_width + (self.screen_width * 0.1)
+                end
+            end
+            self.table_height = self.table_width
+            UIManager:setDirty(nil, "partial")
+            self:createUI()
+            return true
+        end
+    end)
+end
+
+function SchulteTable:paintTo(bb, x, y)
+    if self.is_enabled and self[1] then
+        self[1]:paintTo(bb, x, y)
+    end
 end
 
 return SchulteTable
