@@ -6,6 +6,10 @@ local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
 local CenterContainer = require("ui/widget/container/centercontainer")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
+local CloseButton = require("ui/widget/closebutton")
+local OverlapGroup = require("ui/widget/overlapgroup")
+local Device = require("device")
+local GestureRange = require("ui/gesturerange")
 local Geom = require("ui/geometry")
 local Screen = require("device").screen
 local Font = require("ui/font")
@@ -15,6 +19,9 @@ local TextWidget = require("ui/widget/textwidget")
 local Size = require("ui/size")
 local ToggleSwitch = require("ui/widget/toggleswitch")
 local UIManager = require("ui/uimanager")
+--local DEBUG = require("dbg")
+
+--DEBUG:turnOn()
 
 local SchulteNumber = InputContainer:new {
     label = nil,
@@ -50,9 +57,9 @@ function SchulteNumber:init()
 end
 
 
-local SchulteTable = WidgetContainer:extend{
+local SchulteTable = InputContainer:extend{
     is_enabled = false,
-    name = "Schulte table",
+    name = "schultetable",
     margin = 0.1,
     bordersize = Screen:scaleBySize(1),
     face = Font:getFace("infont"),
@@ -73,7 +80,7 @@ function SchulteTable:init()
         return
     end
     self:generateNumbers()
-    self:createUI(true)
+    self:createUI()
 end
 
 function SchulteTable:onReaderReady()
@@ -83,13 +90,21 @@ end
 
 function SchulteTable:resetLayout()
     self:generateNumbers()
-    self:createUI(true)
+    self:createUI()
+--[[    DEBUG("RESET LAYOUT ------------------------------")
+    if Device:isTouchDevice() then
+        self.ges_events.TapTable = {
+            GestureRange:new{
+                ges = "tap",
+                range = self.container.dimen,
+            }
+        }
+    end]]
 end
 
 function SchulteTable:addToMainMenu(menu_items)
     menu_items.schulte_talbe = {
         text = _("Speed reading module - Schulte's table"),
-        checked_func = function() return self.is_enabled end,
         callback = function()
             self.is_enabled = not self.is_enabled
             if self.is_enabled then self:resetLayout() end
@@ -203,25 +218,46 @@ function SchulteTable:createCellsSizeButton()
     return cells_buttons_group
 end
 
-function SchulteTable:createUI(readSettings)
 
-    local main = VerticalGroup:new{width = self.screen_width}
+function SchulteTable:createCloseButton()
+    local close_button = CloseButton:new{window = self}
+    return OverlapGroup:new{
+        dimen = Geom:new{w = self.screen_width, h = Size.item.height_default},
+        close_button,
+    }
+end
+
+function SchulteTable:createUI()
+    UIManager:setDirty(self, function()
+        return "ui", self.dimen
+    end)
+
+    local main = VerticalGroup:new{
+        width = self.screen_width,
+    }
+
+    table.insert(main, self:createCloseButton())
     table.insert(main, self:generateTable())
-    table.insert(main, VerticalSpan:new{width = ((self.screen_height - self.table_height)) - (self.screen_height * 0.11)})
+    table.insert(main, VerticalSpan:new{width = ((self.screen_height - self.table_height - Size.item.height_default)) - (self.screen_height * 0.11)})
     table.insert(main, self:createTableSizeButton())
     table.insert(main, VerticalSpan:new{width = 5})
     table.insert(main, self:createCellsSizeButton())
 
-    self[1] = FrameContainer:new{
+
+
+    self.container = FrameContainer:new{
         margin = 2,
         bordersize = 0,
         background = Blitbuffer.COLOR_WHITE,
         radius = 0,
-        padding = self.padding,
+        padding = 0,
         width = self.screen_width,
         height = self.screen_height,
         main
     }
+    UIManager:show(self.container)
+
+
 end
 
 function SchulteTable:onConfigChoose(values, name, event, args, events, position)
@@ -233,8 +269,7 @@ function SchulteTable:onConfigChoose(values, name, event, args, events, position
                 self:generateNumbers()
             end
             self:createUI()
-            UIManager:setDirty(nil, "partial")
-            return true
+            return false
         end
         if event == "ChangeCellsSize" then
             if args[position] == "decSize" then
@@ -247,17 +282,42 @@ function SchulteTable:onConfigChoose(values, name, event, args, events, position
                 end
             end
             self.table_height = self.table_width
-            UIManager:setDirty(nil, "partial")
+            --UIManager:setDirty(nil, "partial")
             self:createUI()
-            return true
+            return false
         end
     end)
+    --return false
 end
 
+function SchulteTable:onAnyKeyPressed()
+    --DEBUG("------ ON ANYKEY //////////")
+    return self:onClose()
+end
+
+function SchulteTable:onClose()
+    --self:saveSummary()
+    --DEBUG("------ ON CLOSE ---------")
+    --self.is_enabled = not self.is_enabled
+    UIManager:setDirty("all")
+    UIManager:close(self.container)
+    UIManager:close(self)
+    return true
+end
+
+function SchulteTable:onTapTable()
+    --Device:getPowerDevice():toggleFrontlight()
+    --self:onShowOnOff()
+    --DEBUG("====== ON TAP ========")
+    return true
+end
+
+--[[
 function SchulteTable:paintTo(bb, x, y)
     if self.is_enabled and self[1] then
         self[1]:paintTo(bb, x, y)
     end
 end
+]]
 
 return SchulteTable

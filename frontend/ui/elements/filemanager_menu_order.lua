@@ -30,6 +30,7 @@ local order = {
         -- end common settings
     },
     tools = {
+        "schulte_talbe",
         "calibre_wireless_connection",
         "evernote",
         "statistics",

@@ -51,6 +51,7 @@ local order = {
         "status_bar",
     },
     tools = {
+        "schulte_talbe",
         "read_timer",
         "calibre_wireless_connection",
         "evernote",
