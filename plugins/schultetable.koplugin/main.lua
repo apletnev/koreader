@@ -5,11 +5,11 @@ local HorizontalSpan = require("ui/widget/horizontalspan")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
 local CenterContainer = require("ui/widget/container/centercontainer")
-local WidgetContainer = require("ui/widget/container/widgetcontainer")
+local LeftContainer = require("ui/widget/container/leftcontainer")
 local CloseButton = require("ui/widget/closebutton")
+local LineWidget = require("ui/widget/linewidget")
+local Button = require("ui/widget/button")
 local OverlapGroup = require("ui/widget/overlapgroup")
-local Device = require("device")
-local GestureRange = require("ui/gesturerange")
 local Geom = require("ui/geometry")
 local Screen = require("device").screen
 local Font = require("ui/font")
@@ -79,6 +79,7 @@ function SchulteTable:init()
     if not self.is_enabled then
         return
     end
+
     self:generateNumbers()
     self:createUI()
 end
@@ -89,17 +90,9 @@ function SchulteTable:onReaderReady()
 end
 
 function SchulteTable:resetLayout()
+    UIManager:close(self.container)
     self:generateNumbers()
     self:createUI()
---[[    DEBUG("RESET LAYOUT ------------------------------")
-    if Device:isTouchDevice() then
-        self.ges_events.TapTable = {
-            GestureRange:new{
-                ges = "tap",
-                range = self.container.dimen,
-            }
-        }
-    end]]
 end
 
 function SchulteTable:addToMainMenu(menu_items)
@@ -107,7 +100,15 @@ function SchulteTable:addToMainMenu(menu_items)
         text = _("Speed reading module - Schulte's table"),
         callback = function()
             self.is_enabled = not self.is_enabled
-            if self.is_enabled then self:resetLayout() end
+            if self.is_enabled then
+                local settings = G_reader_settings:readSetting("schulte") or {}
+                if settings then
+                    self.table_width = settings.table_width
+                    self.table_height = settings.table_height
+                    self.table_cells_count = settings.table_cells_count
+                end
+                self:resetLayout()
+            end
             return true
         end,
     }
@@ -178,39 +179,36 @@ function SchulteTable:generateTable()
     return schult_table_result
 end
 
-function SchulteTable:createTableSizeButton()
-    local size_buttons_group = HorizontalGroup:new{}
-    table.insert(size_buttons_group, TextWidget:new{text = _("Cells count"), face = Font:getFace("infont")})
-    table.insert(size_buttons_group, HorizontalSpan:new{width = self.cell_padding * 2})
-    table.insert(size_buttons_group, ToggleSwitch:new{
+function SchulteTable:createCellsButton()
+    local cells_buttons_group = HorizontalGroup:new{align = "center"}
+    table.insert(cells_buttons_group, HorizontalSpan:new{width = self.screen_width * 0.15})
+    table.insert(cells_buttons_group, TextWidget:new{text = _("Size"), face = self.face})
+    table.insert(cells_buttons_group, HorizontalSpan:new{width = self.cell_padding * 2})
+    table.insert(cells_buttons_group, ToggleSwitch:new{
         width = self.screen_width * 0.2,
         default_value = 0,
-        event = "ChangeCellsCount",
-        toggle = { _("-"), _("+") },
-        args = { "decCount", "incCount" },
+        event = "ChangeCellsSize",
+        toggle = {"-","+"},
+        args = {"decSize","incSize"},
         alternate = false,
         default_arg = "",
-        values = { 1, 2 },
+        values = {1,2},
         enabled = true,
         config = self,
         readonly = false,
     })
-    return size_buttons_group
-end
-
-function SchulteTable:createCellsSizeButton()
-    local cells_buttons_group = HorizontalGroup:new{}
-    table.insert(cells_buttons_group, TextWidget:new{text = _("Cells size"), face = Font:getFace("infont")})
+    table.insert(cells_buttons_group, HorizontalSpan:new{width = self.cell_padding * 5})
+    table.insert(cells_buttons_group, TextWidget:new{text = _("Count"), face = self.face})
     table.insert(cells_buttons_group, HorizontalSpan:new{width = self.cell_padding * 2})
     table.insert(cells_buttons_group, ToggleSwitch:new{
-        width = self.screen_width * 0.2 ,
+        width = self.screen_width * 0.2,
         default_value = 0,
-        event = "ChangeCellsSize",
-        toggle = { _("-"), _("+") },
-        args = { "decSize", "incSize" },
+        event = "ChangeCellsCount",
+        toggle = {"-","+"},
+        args = {"decCount","incCount"},
         alternate = false,
         default_arg = "",
-        values = {1, 2},
+        values = {1,2},
         enabled = true,
         config = self,
         readonly = false,
@@ -218,12 +216,80 @@ function SchulteTable:createCellsSizeButton()
     return cells_buttons_group
 end
 
+function SchulteTable:createRefreshAndInfoButtons()
+    local cells_horizontal_group = HorizontalGroup:new{align="center"}
+    table.insert(cells_horizontal_group, Button:new{
+        text = _("Refresh"),
+        enabled = true, -- defaults to true
+        width = Screen:scaleBySize(100),
+        max_width = Screen:scaleBySize(150),
+        bordersize = Screen:scaleBySize(1),
+        margin = 0,
+        radius = 0,
+        padding = Screen:scaleBySize(1),
+        callback = function()
+            self:resetLayout()
+        end,
+    })
+    table.insert(cells_horizontal_group, HorizontalSpan:new{width = self.cell_padding * 2})
+    table.insert(cells_horizontal_group, Button:new{
+        text = _("Info"),
+        enabled = true, -- defaults to true
+        width = Screen:scaleBySize(50),
+        max_width = Screen:scaleBySize(100),
+        bordersize = Screen:scaleBySize(1),
+        margin = 0,
+        radius = 0,
+        padding = Screen:scaleBySize(1),
+        callback = function()
+            self:resetLayout()
+        end,
+    })
+    return cells_horizontal_group
+end
 
 function SchulteTable:createCloseButton()
     local close_button = CloseButton:new{window = self}
     return OverlapGroup:new{
         dimen = Geom:new{w = self.screen_width, h = Size.item.height_default},
         close_button,
+    }
+end
+function SchulteTable:genHeader(title, span_top, span_bottom)
+    local width, height = Screen:getWidth(), Size.item.height_default
+
+    local header_title = TextWidget:new{
+        text = title,
+        face = self.medium_font_face,
+        fgcolor = Blitbuffer.gray(0.4),
+    }
+
+    local padding_span = HorizontalSpan:new{width = self.table_padding}
+    local line_width = (width - header_title:getSize().w) / 2 - self.table_padding * 2
+    local line_container = LeftContainer:new{
+        dimen = Geom:new{w = line_width, h = height},
+        LineWidget:new{
+            background = Blitbuffer.gray(0.2),
+            dimen = Geom:new{
+                w = line_width,
+                h = Size.line.thick,
+            }
+        }
+    }
+
+    return VerticalGroup:new{
+        VerticalSpan:new{width = span_top},
+        HorizontalGroup:new{
+            align = "center",
+            padding_span,
+            line_container,
+            padding_span,
+            header_title,
+            padding_span,
+            line_container,
+            padding_span,
+        },
+        VerticalSpan:new{width = span_bottom}
     }
 end
 
@@ -234,16 +300,16 @@ function SchulteTable:createUI()
 
     local main = VerticalGroup:new{
         width = self.screen_width,
+        align = "left",
     }
 
     table.insert(main, self:createCloseButton())
     table.insert(main, self:generateTable())
-    table.insert(main, VerticalSpan:new{width = ((self.screen_height - self.table_height - Size.item.height_default)) - (self.screen_height * 0.11)})
-    table.insert(main, self:createTableSizeButton())
-    table.insert(main, VerticalSpan:new{width = 5})
-    table.insert(main, self:createCellsSizeButton())
-
-
+    table.insert(main, VerticalSpan:new{width = ((self.screen_height - self.table_height - Size.item.height_default)) - (self.screen_height * 0.25)})
+    table.insert(main, self:genHeader(_("Cells"), Size.item.height_default, Screen:scaleBySize(3)))
+    table.insert(main, self:createCellsButton())
+    table.insert(main, self:genHeader(_("Other"), Screen:scaleBySize(3), Screen:scaleBySize(3)))
+    table.insert(main, self:createRefreshAndInfoButtons())
 
     self.container = FrameContainer:new{
         margin = 2,
@@ -256,8 +322,6 @@ function SchulteTable:createUI()
         main
     }
     UIManager:show(self.container)
-
-
 end
 
 function SchulteTable:onConfigChoose(values, name, event, args, events, position)
@@ -268,6 +332,7 @@ function SchulteTable:onConfigChoose(values, name, event, args, events, position
                 self.table_cells_count = self.table_cells_count + delta
                 self:generateNumbers()
             end
+            UIManager:close(self.container)
             self:createUI()
             return false
         end
@@ -282,42 +347,34 @@ function SchulteTable:onConfigChoose(values, name, event, args, events, position
                 end
             end
             self.table_height = self.table_width
-            --UIManager:setDirty(nil, "partial")
+            UIManager:close(self.container)
             self:createUI()
             return false
         end
     end)
-    --return false
+    return false
 end
 
 function SchulteTable:onAnyKeyPressed()
-    --DEBUG("------ ON ANYKEY //////////")
     return self:onClose()
 end
 
 function SchulteTable:onClose()
-    --self:saveSummary()
-    --DEBUG("------ ON CLOSE ---------")
-    --self.is_enabled = not self.is_enabled
+    self.is_enabled = false
+    self:saveSettings()
     UIManager:setDirty("all")
     UIManager:close(self.container)
     UIManager:close(self)
     return true
 end
 
-function SchulteTable:onTapTable()
-    --Device:getPowerDevice():toggleFrontlight()
-    --self:onShowOnOff()
-    --DEBUG("====== ON TAP ========")
-    return true
+function SchulteTable:saveSettings()
+    local settings = {
+        table_width = self.table_width,
+        table_height = self.table_height,
+        table_cells_count = self.table_cells_count
+    }
+    G_reader_settings:saveSetting("schulte", settings)
 end
-
---[[
-function SchulteTable:paintTo(bb, x, y)
-    if self.is_enabled and self[1] then
-        self[1]:paintTo(bb, x, y)
-    end
-end
-]]
 
 return SchulteTable
