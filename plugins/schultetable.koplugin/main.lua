@@ -19,9 +19,6 @@ local TextWidget = require("ui/widget/textwidget")
 local Size = require("ui/size")
 local ToggleSwitch = require("ui/widget/toggleswitch")
 local UIManager = require("ui/uimanager")
-local DEBUG = require("dbg")
-
-DEBUG:turnOn()
 
 local SchulteNumber = InputContainer:new {
     label = nil,
@@ -58,10 +55,10 @@ end
 
 
 local SchulteTable = InputContainer:extend{
-    is_enabled = true,
+    is_enabled = false,
     name = "schultetable",
     margin = 0.1,
-    bordersize = Screen:scaleBySize(1),
+    bordersize = 0,
     face = Font:getFace("infont"),
     cell_padding = Screen:scaleBySize(5),
     table_padding = Screen:scaleBySize(2),
@@ -76,7 +73,6 @@ local SchulteTable = InputContainer:extend{
 }
 
 function SchulteTable:init()
-    self:resetLayout() -- TODO:remove after debugging
 end
 
 function SchulteTable:onReaderReady()
@@ -89,6 +85,12 @@ function SchulteTable:resetLayout()
         return
     end
 
+    if Screen:getScreenMode() == "landscape" then
+        self.table_width = Screen:getHeight() - Screen:getHeight() * 0.1
+        self.table_height = self.table_width
+        self.screen_width = Screen:getWidth()
+        self.screen_height = Screen:getHeight()
+    end
 
     UIManager:close(self.container)
     self:generateNumbers()
@@ -171,7 +173,6 @@ function SchulteTable:generateTable()
             w = self.table_width - 2*self.bordersize -2*self.table_padding - 4,
             h = self.table_height - 2*self.bordersize -2*self.table_padding - 4,
         },
-        bordersize = 1,
         vertical_group}
 
     if Screen:getScreenMode() ~= "landscape" then
@@ -184,17 +185,16 @@ function SchulteTable:generateTable()
     return result
 end
 
-function SchulteTable:createCellsButton()
-    local cells_buttons_group = HorizontalGroup:new{align = "center"}
-    table.insert(cells_buttons_group, HorizontalSpan:new{width = self.screen_width * 0.15})
-    table.insert(cells_buttons_group, TextWidget:new{text = _("Size"), face = self.face})
-    table.insert(cells_buttons_group, HorizontalSpan:new{width = self.cell_padding * 2})
-    table.insert(cells_buttons_group, ToggleSwitch:new{
+function SchulteTable:generateSwitch(group, title, event, args, margin)
+    table.insert(group, HorizontalSpan:new{width = self.screen_width * margin})
+    table.insert(group, TextWidget:new{text = title, face = self.face})
+    table.insert(group, HorizontalSpan:new{width = self.cell_padding * 2})
+    table.insert(group, ToggleSwitch:new{
         width = self.screen_width * 0.2,
         default_value = 0,
-        event = "ChangeCellsSize",
+        event = event,
         toggle = {"-","+"},
-        args = {"decSize","incSize"},
+        args = args,
         alternate = false,
         default_arg = "",
         values = {1,2},
@@ -202,23 +202,7 @@ function SchulteTable:createCellsButton()
         config = self,
         readonly = false,
     })
-    table.insert(cells_buttons_group, HorizontalSpan:new{width = self.cell_padding * 5})
-    table.insert(cells_buttons_group, TextWidget:new{text = _("Count"), face = self.face})
-    table.insert(cells_buttons_group, HorizontalSpan:new{width = self.cell_padding * 2})
-    table.insert(cells_buttons_group, ToggleSwitch:new{
-        width = self.screen_width * 0.2,
-        default_value = 0,
-        event = "ChangeCellsCount",
-        toggle = {"-","+"},
-        args = {"decCount","incCount"},
-        alternate = false,
-        default_arg = "",
-        values = {1,2},
-        enabled = true,
-        config = self,
-        readonly = false,
-    })
-    return cells_buttons_group
+    return group
 end
 
 function SchulteTable:createRefreshAndInfoButtons()
@@ -228,9 +212,9 @@ function SchulteTable:createRefreshAndInfoButtons()
         enabled = true, -- defaults to true
         width = Screen:scaleBySize(100),
         max_width = Screen:scaleBySize(150),
-        bordersize = Screen:scaleBySize(1),
+        bordersize = Size.border.thin,
         margin = 0,
-        radius = 0,
+        radius = Size.radius.window,
         padding = Screen:scaleBySize(1),
         callback = function()
             self:resetLayout()
@@ -242,9 +226,9 @@ function SchulteTable:createRefreshAndInfoButtons()
         enabled = true, -- defaults to true
         width = Screen:scaleBySize(50),
         max_width = Screen:scaleBySize(100),
-        bordersize = Screen:scaleBySize(1),
+        bordersize = Size.border.thin,
         margin = 0,
-        radius = 0,
+        radius = Size.radius.window,
         padding = Screen:scaleBySize(1),
         callback = function()
             self:resetLayout()
@@ -256,7 +240,6 @@ end
 function SchulteTable:createCloseButton()
     local close_button = CloseButton:new{window = self}
     return OverlapGroup:new{
-        bordersize = 1,
         dimen = Geom:new{w = self.screen_width, h = Size.item.height_default},
         close_button,
     }
@@ -304,47 +287,43 @@ function SchulteTable:createUI()
         return "ui", self.dimen
     end)
 
-
+    local main = VerticalGroup:new{
+        width = self.screen_width,
+        align = "left",
+    }
+    table.insert(main, self:createCloseButton())
     if Screen:getScreenMode() == "landscape" then
-        --DEBUG("SCREEN MODE LANDSCAPE-------------")
-        self.table_width = Screen:getHeight() - Screen:getHeight() * 0.1
-        self.table_height = Screen:getHeight()
-        --self.screen_width = self.table_width
-        --self.screen_height = self.table_height
-        self.screen_width =  Screen:getWidth()
-        self.screen_height = Screen:getHeight()
-        DEBUG("SCREEN MODE LANDSCAPE-------------", Screen:getWidth(), Screen:getHeight(), self.screen_width, self.screen_height)
-    end
-
-    local main
-    if Screen:getScreenMode() == "landscape" then
-        main = HorizontalGroup:new{
-            width = self.screen_width,
-            height = self.screen_height,
-            margin = 2,
-            bordersize = 1,
-            align= "top"
+        local horiz = HorizontalGroup:new{
+            width = self.table_width,
+            height = self.table_height,
+            margin = 0,
+            align = "top",
         }
-    else
-         main = VerticalGroup:new{
-            width = self.screen_width,
+        table.insert(horiz, self:generateTable())
+
+        local vgroup = VerticalGroup:new{
             align = "left",
         }
-    end
 
-    table.insert(main, self:createCloseButton())
-    table.insert(main, self:generateTable())
---[[    if Screen:getScreenMode() ~= "landscape" then
+        table.insert(vgroup, VerticalSpan:new{width = self.screen_height - self.screen_height * 0.4})
+        table.insert(vgroup, self:generateSwitch(HorizontalGroup:new{align = "center"}, _("Size"), "ChangeCellsSize", {"decSize","incSize"}, 0.01))
+        table.insert(vgroup, VerticalSpan:new{width = 10})
+        table.insert(vgroup, self:generateSwitch(HorizontalGroup:new{align = "center"}, _("Count"), "ChangeCellsCount", {"decCount","incCount"}, 0.01))
+        table.insert(vgroup, VerticalSpan:new{width = 10})
+        table.insert(vgroup, self:createRefreshAndInfoButtons())
+        table.insert(horiz, vgroup)
+        table.insert(main, horiz)
+    else
+        table.insert(main, self:generateTable())
         table.insert(main, VerticalSpan:new{width = ((self.screen_height - self.table_height - Size.item.height_default)) - (self.screen_height * 0.25)})
         table.insert(main, self:genHeader(_("Cells"), Size.item.height_default, Screen:scaleBySize(3)))
-    end
-    table.insert(main, self:createCellsButton())
-    if Screen:getScreenMode() ~= "landscape" then
+        local horizontal_group = HorizontalGroup:new{align = "center"}
+        self:generateSwitch(horizontal_group, _("Size"), "ChangeCellsSize", {"decSize","incSize"}, 0.15)
+        self:generateSwitch(horizontal_group, _("Count"), "ChangeCellsCount", {"decCount","incCount"}, 0.05)
+        table.insert(main, horizontal_group)
         table.insert(main, self:genHeader(_("Other"), Screen:scaleBySize(3), Screen:scaleBySize(3)))
-    end]]
-    --table.insert(main, self:createRefreshAndInfoButtons())
-
-    --DEBUG("SCREEN WIDHT, HEIGHT", self.screen_width, self.screen_height)
+        table.insert(main, self:createRefreshAndInfoButtons())
+    end
     self.container = FrameContainer:new{
         margin = 2,
         bordersize = 0,
@@ -355,8 +334,7 @@ function SchulteTable:createUI()
         height = self.screen_height,
         main
     }
-    self[1] = self.container --TODO: remove after debugging
-    --UIManager:show(self.container)
+    UIManager:show(self.container)
 end
 
 function SchulteTable:onConfigChoose(values, name, event, args, events, position)
